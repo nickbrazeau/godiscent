@@ -65,7 +65,7 @@ search_grid_full <- lapply(1:nrow(sims), function(x){
 # run discent wrapper
 #......................
 plan(future.batchtools::batchtools_slurm, workers = availableCores(),
-     template = "slurm_discent.tmpl")
+     template = "analyses/slurm_discent.tmpl")
 search_grid_full$cost <- furrr::future_pmap(search_grid_full[,c("start_params", "f_learn", "m_learn", "discdat")],
                                             get_GS_cost,
                                   .options = furrr_options(seed = TRUE))

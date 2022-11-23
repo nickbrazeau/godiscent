@@ -10,7 +10,7 @@
 #SBATCH --output=polysim_%j.log     # Path to the standard output and error files
 
 ## Uncomment line to run each step of future
-## R CMD BATCH _future_polySimIBD.R
-## R CMD BATCH _future_searchgrid.R
-## R CMD BATCH _future_discent.R
+## R CMD BATCH analyses/_future_polySimIBD.R
+## R CMD BATCH analyses/_future_searchgrid.R
+## R CMD BATCH analyses/_future_discent.R
 

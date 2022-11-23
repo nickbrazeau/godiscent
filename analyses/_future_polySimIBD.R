@@ -35,7 +35,7 @@ locatcomb <- readRDS("mkdata/simdata/locatcombo.rds")
 #...........................................................
 ret <- maestro %>% dplyr::select(c("modname", "rep"))
 plan(future.batchtools::batchtools_slurm, workers = availableCores(),
-     template = "slurm_discent.tmpl")
+     template = "analyses/slurm_discent.tmpl")
 ret$discdat <- furrr::future_pmap(maestro[,c("pos", "N", "m", "rho", "mean_coi", "tlim", "migr_mat")],
                                   swfsim_2_discdat_wrapper,
                                   dwnsmplnum = 5,
