@@ -30,8 +30,10 @@ fulldiscdat <- dplyr::left_join(discdat, beststarts, by = "modname")
 #...........................................................
 ret <- fulldiscdat %>%
   dplyr::select(c("modname", "rep"))
-plan(future.batchtools::batchtools_slurm, workers = availableCores(),
-     template = "analyses/slurm_discent.tmpl")
+# plan(future.batchtools::batchtools_slurm, workers = availableCores(),
+#      template = "analyses/slurm_discent.tmpl")
+
+plan(cluster, workers = availableWorkers())
 ret$discret <- furrr::future_pmap(fulldiscdat[,c("discdat", "start_params", "f_learn", "m_learn")],
                                   get_discentwrapper,
                                   .options = furrr_options(seed = TRUE))
