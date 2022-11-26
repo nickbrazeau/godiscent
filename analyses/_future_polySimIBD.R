@@ -36,11 +36,19 @@ locatcomb <- readRDS("mkdata/simdata/locatcombo.rds")
 ret <- maestro %>% dplyr::select(c("modname", "rep"))
 plan(future.batchtools::batchtools_slurm, workers = availableCores(),
      template = "analyses/slurm_discent.tmpl")
-ret$discdat <- furrr::future_pmap(maestro[,c("pos", "N", "m", "rho", "mean_coi", "tlim", "migr_mat")],
-                                  swfsim_2_discdat_wrapper,
-                                  dwnsmplnum = 5,
-                                  locatcomb = locatcomb,
-                                  .options = furrr_options(seed = TRUE))
+
+# add progress bar
+with_progress({
+  p <- progressor(steps = nrow(swfsim_2_discdat_wrapper))
+  ret$discdat <- furrr::future_pmap(maestro[,c("pos", "N", "m", "rho", "mean_coi", "tlim", "migr_mat")],
+                                    swfsim_2_discdat_wrapper,
+                                    dwnsmplnum = 5,
+                                    locatcomb = locatcomb,
+                                    demeNames = as.character(1:100),
+                                    p = p,
+                                    .options = furrr_options(seed = TRUE))
+
+})
 
 dir.create("results")
 saveRDS(ret, "results/discdat_from_polySimIBD_maestro.RDS")

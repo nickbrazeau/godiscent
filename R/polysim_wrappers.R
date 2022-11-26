@@ -9,7 +9,7 @@ swfsim_2_discdat_wrapper <- function(pos, N, m,
                                   rho, mean_coi, tlim,
                                   migr_mat,
                                   dwnsmplnum,
-                                  demeNames, locatcomb) {
+                                  demeNames, locatcomb, p) {
     # run swfsim
     swfsim <- polySimIBD::sim_swf(pos, N, m, rho, mean_coi, tlim, migr_mat)
     # get ibd dat
@@ -21,6 +21,10 @@ swfsim_2_discdat_wrapper <- function(pos, N, m,
     # out
     ret <- ret %>%
       dplyr::select(c("modname", "discdat"))
+
+    # call step
+    p()
+
     return(ret)
 }
 
