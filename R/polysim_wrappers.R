@@ -20,7 +20,7 @@ swfsim_2_discdat_wrapper <- function(pos, N, m,
                                      IBDdat = ibddat)
     # out
     ret <- ret %>%
-      dplyr::select(c("modname", "discdat"))
+      dplyr::select( "discdat")
 
     # call step
     p()

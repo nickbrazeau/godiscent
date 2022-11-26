@@ -11,6 +11,7 @@ library(tidyverse)
 library(furrr)
 library(future)
 library(future.batchtools)
+library(progressr)
 library(polySimIBD)
 source("R/polysim_wrappers.R")
 source("R/utils.R")
@@ -39,12 +40,11 @@ plan(future.batchtools::batchtools_slurm, workers = availableCores(),
 
 # add progress bar
 with_progress({
-  p <- progressor(steps = nrow(swfsim_2_discdat_wrapper))
-  ret$discdat <- furrr::future_pmap(maestro[,c("pos", "N", "m", "rho", "mean_coi", "tlim", "migr_mat")],
+  p <- progressor(steps = nrow(maestro))
+  ret$discdat <- furrr::future_pmap(maestro[,c("pos", "N", "m", "rho", "mean_coi", "tlim", "migr_mat", "demeNames")],
                                     swfsim_2_discdat_wrapper,
                                     dwnsmplnum = 5,
                                     locatcomb = locatcomb,
-                                    demeNames = as.character(1:100),
                                     p = p,
                                     .options = furrr_options(seed = TRUE))
 
