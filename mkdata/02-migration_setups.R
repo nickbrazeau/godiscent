@@ -73,8 +73,8 @@ locatcomb <- locatcomb %>%
 # expect this to be lower tri + upper tri + diagonals
 goodegg:::assert_eq(nrow(locatcomb), choose(25,2)*2 + 25)
 # save out for downstream
-dir.create("validation/mkdata/simdata/", recursive = T)
-saveRDS(locatcomb, "validation/mkdata/simdata/locatcombo.rds")
+dir.create("mkdata/simdata/", recursive = T)
+saveRDS(locatcomb, "mkdata/simdata/locatcombo.rds")
 
 
 #......................
