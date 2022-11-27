@@ -23,6 +23,6 @@ lamdba_optimdf$optimpar <- purrr::pmap(lamdba_optimdf, function(meancoi, start){
 # it is all approximately the same (as it approximating 0, L'hospital)
 
 # save out
-dir.create("validation/mkdata/simdata/", recursive = T)
+dir.create("mkdata/simdata/", recursive = T)
 saveRDS(object = abs(unlist(lamdba_optimdf$optimpar)),
-        file = "validation/mkdata/simdata/optim_lambda.RDS")
+        file = "mkdata/simdata/optim_lambda.RDS")

@@ -151,6 +151,6 @@ migmatdf$migmat[migmatdf$modname == "torus"] <- list(torusmigmat)
 #............................................................
 # save out
 #...........................................................
-dir.create("validation/mkdata/simdata/", recursive = T)
-saveRDS(migmatdf, "validation/mkdata/simdata/migmat_framework.RDS")
+dir.create("mkdata/simdata/", recursive = T)
+saveRDS(migmatdf, "mkdata/simdata/migmat_framework.RDS")
 

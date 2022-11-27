@@ -20,7 +20,7 @@ source("R/utils.R")
 # read in and make polysim IBD dataframe
 #...........................................................
 reps <- 100
-maestro <- readRDS("validation/mkdata/simulation_maestro.RDS")
+maestro <- readRDS("mkdata/simulation_maestro.RDS")
 maestro <- lapply(1:reps, function(x){
   maestro <- maestro %>%
     dplyr::mutate(rep = x) %>%
