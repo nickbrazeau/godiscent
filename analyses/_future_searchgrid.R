@@ -26,12 +26,10 @@ flearnsvec <- 10^-seq(1,10)
 mlearnsvec <- 10^-seq(5,15)
 search_grid <- expand.grid(fstartsvec, mstartsvec, flearnsvec, mlearnsvec)
 colnames(search_grid) <- c("fstart", "mstart", "f_learn", "m_learn")
-# down sample
-downsample <- 1e4
-search_grid <- search_grid[sample(1:nrow(search_grid), size  = downsample, replace = F), ]
+
 # template start
-tempstart_params <- rep(0.1, 100)
-names(tempstart_params) <- as.character(1:100)
+tempstart_params <- rep(0.1, 25)
+names(tempstart_params) <- as.character(1:25)
 tempstart_params <- c(tempstart_params, "m" = 1e-3)
 
 # liftover to start param format

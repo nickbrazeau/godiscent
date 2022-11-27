@@ -4,6 +4,10 @@
 #' @details going to assume one "model" search is suffice
 #'
 get_GS_cost <- function(start_params, f_learn, m_learn, discdat) {
+  # filter internal
+  discdat <- discdat %>%
+    dplyr::filter(deme1 != deme2)
+  # run
   cost <- discent::deme_inbreeding_spcoef(discdat = discdat,
                                           start_params = start_params,
                                           f_learningrate = f_learn,

@@ -52,7 +52,7 @@ get_swfsim_2_ibd <- function(swfsim, N, dwnsmplnum){
       return(polySimIBD::get_pairwise_bv_ibd(swf = swf, host_index = hosts))
     }, swf = swfsim)
     # tidy up for out
-    ret <- tibble::as_tibble(comb_hosts_df) %>%
+    ret <- tibble::as_tibble(comb_hosts_df, .name_repair = "minimal") %>%
       magrittr::set_colnames(c("smpl1", "smpl2")) %>%
       dplyr::mutate(gendist = as.vector(unlist(ibd)))
     return(ret)
