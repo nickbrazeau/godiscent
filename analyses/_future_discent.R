@@ -17,9 +17,18 @@ source("R/discent_wrappers.R")
 source("R/utils.R")
 
 #............................................................
-# read in results
+# find best starts
 #...........................................................
-beststarts <- readRDS("results/best_starts_for_discdat.RDS")
+search_grid_full <- readRDS("results/search_grid_full_for_discdat.RDS")
+beststarts <- search_grid_full %>%
+  dplyr::group_by(modname) %>%
+  dplyr::filter(cost == min(cost)) %>%
+  dplyr::select(c("modname", "start_params", "f_learn", "m_learn")) %>%
+  dplyr::ungroup()
+
+#............................................................
+# read in discdat and join starts
+#...........................................................
 discdat <- readRDS("results/discdat_from_polySimIBD_maestro.RDS")
 # bring home
 fulldiscdat <- dplyr::left_join(discdat, beststarts, by = "modname")

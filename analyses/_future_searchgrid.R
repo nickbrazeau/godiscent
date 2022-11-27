@@ -68,15 +68,7 @@ search_grid_full$cost <- furrr::future_pmap(search_grid_full[,c("start_params", 
                                             get_GS_cost,
                                   .options = furrr_options(seed = TRUE))
 
-#......................
-# filter to best start
-#......................
-beststarts <- search_grid_full %>%
-  dplyr::group_by(modname) %>%
-  dplyr::filter(cost == min(cost)) %>%
-  dplyr::select(c("modname", "start_params", "f_learn", "m_learn")) %>%
-  dplyr::ungroup()
 
 dir.create("results", recursive = T)
-saveRDS(beststarts, "results/best_starts_for_discdat.RDS")
+saveRDS(search_grid_full, "results/search_grid_full_for_discdat.RDS")
 
