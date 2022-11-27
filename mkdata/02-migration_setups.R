@@ -20,8 +20,8 @@ migmatdf <- tibble::tibble(modname = c("IsoByDist",
 #............................................................
 ##### PART 0: Make a Square Matrix #####
 #...........................................................
-nCell <- 100
-coords <- round(seq(1, nCell, by = 10))
+nCell <- 25
+coords <- round(seq(1, nCell, by = 5))
 latticemodel <- expand.grid(coords, coords)
 plot(latticemodel)
 colnames(latticemodel) <- c("longnum", "latnum")
@@ -42,7 +42,7 @@ selves <- tibble::tibble(deme1 = unique(c(locatcomb$deme1, locatcomb$deme2)),
 locatcomb <- dplyr::bind_rows(locatcomb, selves)
 # euc
 locatcomb <- locatcomb %>%
-  dplyr::mutate(geodist = furrr::future_pmap_dbl(locatcomb, function(deme1, deme2){
+  dplyr::mutate(geodist = purrr::pmap_dbl(locatcomb, function(deme1, deme2){
     # get long lat
     xy1 <- latticemodel[latticemodel$deme == deme1, c("longnum", "latnum")]
     xy2 <- latticemodel[latticemodel$deme == deme2, c("longnum", "latnum")]
@@ -71,7 +71,7 @@ locatcomb <- locatcomb %>%
   dplyr::left_join(., latticemodel_y, by = "deme2")
 
 # expect this to be lower tri + upper tri + diagonals
-goodegg:::assert_eq(nrow(locatcomb), choose(100,2)*2 + 100)
+goodegg:::assert_eq(nrow(locatcomb), choose(25,2)*2 + 25)
 # save out for downstream
 dir.create("validation/mkdata/simdata/", recursive = T)
 saveRDS(locatcomb, "validation/mkdata/simdata/locatcombo.rds")
@@ -104,11 +104,13 @@ make_wide_dist_mat <- function(locatcomb) {
 # assume rates are 1/dist
 migmatdf$migmat <- NA
 migmatdf$migmat[migmatdf$modname == "IsoByDist"] <- list(1/make_wide_dist_mat(locatcomb))
+diag(migmatdf$migmat[migmatdf$modname == "IsoByDist"][[1]]) <- 1
+
 
 #............................................................
 ##### PART 2: Lattice Matrix #####
 #...........................................................
-nInds <- 100
+nInds <- 25
 nMov <- sqrt(nInds)
 latticemigmat <- matrix(0, nInds, nInds)
 # deme looks up = row + sqrt(nInds) in square
@@ -151,3 +153,4 @@ migmatdf$migmat[migmatdf$modname == "torus"] <- list(torusmigmat)
 #...........................................................
 dir.create("validation/mkdata/simdata/", recursive = T)
 saveRDS(migmatdf, "validation/mkdata/simdata/migmat_framework.RDS")
+

@@ -18,9 +18,6 @@ swfsim_2_discdat_wrapper <- function(pos, N, m,
     ret <- IBDdat_tidy_out_2_discdat(N = N, demeNames = demeNames,
                                      locatcomb = locatcomb,
                                      IBDdat = ibddat)
-    # out
-    ret <- ret %>%
-      dplyr::select( "discdat")
 
     # call step
     p()
