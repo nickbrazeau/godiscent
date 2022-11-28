@@ -68,6 +68,9 @@ search_grid_full$cost <- furrr::future_pmap(search_grid_full[,c("start_params", 
                                             get_GS_cost,
                                   .options = furrr_options(seed = TRUE))
 
+search_grid_full <- search_grid_full %>%
+  dplyr::select(c("start_params", "f_learn", "m_learn", "cost"))
+
 
 dir.create("results", recursive = T)
 saveRDS(search_grid_full, "results/search_grid_full_for_discdat.RDS")

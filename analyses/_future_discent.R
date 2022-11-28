@@ -12,7 +12,6 @@ library(furrr)
 library(future)
 library(future.batchtools)
 library(discent)
-source("R/polysim_wrappers.R")
 source("R/discent_wrappers.R")
 source("R/utils.R")
 
