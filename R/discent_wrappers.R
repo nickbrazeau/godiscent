@@ -8,16 +8,16 @@ get_GS_cost <- function(start_params, f_learn, m_learn, discdat) {
   discdat <- discdat %>%
     dplyr::filter(deme1 != deme2)
   # run
-  cost <- discent::deme_inbreeding_spcoef(discdat = discdat,
+  discret <- discent::deme_inbreeding_spcoef(discdat = discdat,
                                           start_params = start_params,
                                           f_learningrate = f_learn,
                                           m_learningrate = m_learn,
                                           momentum = 0.9,
                                           steps = 1e4,
                                           report_progress = FALSE,
-                                          return_verbose = FALSE)$cost[1e4]
+                                          return_verbose = FALSE)
 
-  return(cost)
+  return(discret)
 }
 
 
