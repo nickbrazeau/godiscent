@@ -69,7 +69,7 @@ search_grid_full$cost <- furrr::future_pmap(search_grid_full[,c("start_params", 
                                   .options = furrr_options(seed = TRUE))
 
 search_grid_full <- search_grid_full %>%
-  dplyr::select(c("start_params", "f_learn", "m_learn", "cost"))
+  dplyr::select(c("modname", "rep", "start_params", "f_learn", "m_learn", "cost"))
 
 
 dir.create("results", recursive = T)

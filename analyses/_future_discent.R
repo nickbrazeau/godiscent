@@ -20,6 +20,7 @@ source("R/utils.R")
 #...........................................................
 search_grid_full <- readRDS("results/search_grid_full_for_discdat.RDS")
 beststarts <- search_grid_full %>%
+  tidyr::unnest(cols = "cost") %>%
   dplyr::group_by(modname) %>%
   dplyr::filter(cost == min(cost)) %>%
   dplyr::select(c("modname", "start_params", "f_learn", "m_learn")) %>%
