@@ -16,13 +16,44 @@ source("R/discent_wrappers.R")
 source("R/utils.R")
 
 #............................................................
+# utils
+#...........................................................
+extract_final_cost <- function(discdat) {
+  finalcost <- discdat$cost[length(discdat$cost)]
+  return(finalcost)
+}
+
+extract_final_measures <- function(discdat) {
+  demekey <- discdat$deme_key
+  demekey$Final_Fis <- discdat$Final_Fis
+  demekey$Final_m <- discdat$Final_m
+  demekey <- demekey %>%
+    dplyr::select(-c("key"))
+  return(demekey)
+}
+
+#............................................................
 # find best starts
 #...........................................................
 search_grid_full <- readRDS("results/search_grid_full_for_discdat.RDS")
 beststarts <- search_grid_full %>%
-  tidyr::unnest(cols = "cost") %>%
   dplyr::group_by(modname) %>%
-  dplyr::filter(cost == min(cost)) %>%
+  dplyr::mutate(costfin = purrr::map_dbl(cost, extract_final_cost)) %>%
+  dplyr::filter(costfin == min(costfin))
+# sample if multiple starts OK
+beststarts <- split(beststarts, beststarts$modname)
+cnts <- unlist(lapply(beststarts, nrow))
+
+for (i in 1:length(cnts)) {
+  if (cnts[[i]] > 1) {
+    samp <- sample(1:cnts[i], size = 1)
+    beststarts[[i]] <- beststarts[[i]][samp,]
+  }
+}
+
+# tidy out
+beststarts <- beststarts %>%
+  dplyr::bind_rows() %>%
   dplyr::select(c("modname", "start_params", "f_learn", "m_learn")) %>%
   dplyr::ungroup()
 

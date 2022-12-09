@@ -56,7 +56,7 @@ sims <- sims[1:4,] # assume one use case per sim for optimal start
 # expand out grid
 search_grid_full <- lapply(1:nrow(sims), function(x){
   return(dplyr::bind_cols(sims[x,], search_grid))}
-  ) %>%
+) %>%
   dplyr::bind_rows()
 
 #......................
@@ -64,12 +64,20 @@ search_grid_full <- lapply(1:nrow(sims), function(x){
 #......................
 plan(future.batchtools::batchtools_slurm, workers = availableCores(),
      template = "analyses/slurm_discent.tmpl")
-search_grid_full$cost <- furrr::future_pmap(search_grid_full[,c("start_params", "f_learn", "m_learn", "discdat")],
-                                            get_GS_cost,
-                                  .options = furrr_options(seed = TRUE))
+search_grid_full$discret <- furrr::future_pmap(search_grid_full[,c("start_params", "f_learn", "m_learn", "discdat")],
+                                               get_GS_cost,
+                                               .options = furrr_options(seed = TRUE))
+
+# pull out final cost
+search_grid_full <- search_grid_full %>%
+  dplyr::mutate(finalcost = purrr::map_dbl(discret, extract_final_cost),
+                final_fs = purrr::map(discret, get_fs),
+                final_ms = purrr::map(discret, "Final_ms"))
+
+
 
 search_grid_full <- search_grid_full %>%
-  dplyr::select(c("modname", "rep", "start_params", "f_learn", "m_learn", "cost"))
+  dplyr::select(c("modname", "rep", "start_params", "f_learn", "m_learn", "discret", "finalcost"))
 
 
 dir.create("results", recursive = T)

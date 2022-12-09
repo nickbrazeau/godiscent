@@ -1,3 +1,14 @@
+#' @title simple function for getting final fs
+get_fs <- function(discret) {
+  final_fs <- discret$Final_Fis
+  demekey <- discret$deme_key
+
+  demekey$Final_Fis <- final_fs
+  ret <- demekey %>%
+    dplyr::select(-c("key"))
+  return(ret)
+}
+
 #' @title Basic utility function to subset disc data for start params
 sub_maestro <- function(rettargets, lvl) {
   lvl <- rlang::sym(lvl)

@@ -29,6 +29,11 @@ demeNames <- 1:nrow(latticemodel)
 
 latticemodel <- latticemodel %>%
   dplyr::mutate(deme = demeNames)
+
+# save out basic coords
+saveRDS(object = latticemodel,
+        "mkdata/simdata/latticecords.rds")
+
 #......................
 # cartesian distance matrix
 #......................
