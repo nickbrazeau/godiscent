@@ -1,3 +1,9 @@
+#' @title simple function for extracting final cost
+extract_final_cost <- function(discret) {
+  return(discret$cost[length(discret$cost)])
+}
+
+
 #' @title simple function for getting final fs
 get_fs <- function(discret) {
   final_fs <- discret$Final_Fis
@@ -7,6 +13,11 @@ get_fs <- function(discret) {
   ret <- demekey %>%
     dplyr::select(-c("key"))
   return(ret)
+}
+
+#' @title simple function for getting final ms
+get_ms <- function(discret) {
+  return(discret$Final_m)
 }
 
 #' @title Basic utility function to subset disc data for start params

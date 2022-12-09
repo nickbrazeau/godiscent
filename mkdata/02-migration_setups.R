@@ -22,23 +22,23 @@ migmatdf <- tibble::tibble(modname = c("IsoByDist",
 #...........................................................
 nCell <- 25
 coords <- round(seq(1, nCell, by = 5))
-latticemodel <- expand.grid(coords, coords)
-plot(latticemodel)
-colnames(latticemodel) <- c("longnum", "latnum")
-demeNames <- 1:nrow(latticemodel)
+squarecoords <- expand.grid(coords, coords)
+plot(squarecoords)
+colnames(squarecoords) <- c("longnum", "latnum")
+demeNames <- 1:nrow(squarecoords)
 
-latticemodel <- latticemodel %>%
+squarecoords <- squarecoords %>%
   dplyr::mutate(deme = demeNames)
 
 # save out basic coords
-saveRDS(object = latticemodel,
-        "mkdata/simdata/latticecords.rds")
+saveRDS(object = squarecoords,
+        "mkdata/simdata/squarecoords.rds")
 
 #......................
 # cartesian distance matrix
 #......................
 # get combinations I need
-locatcomb <- t(combn(sort(latticemodel$deme), 2)) %>%
+locatcomb <- t(combn(sort(squarecoords$deme), 2)) %>%
   tibble::as_tibble(., .name_repair = "minimal") %>%
   magrittr::set_colnames(c("deme1", "deme2"))
 # get selfs
@@ -49,8 +49,8 @@ locatcomb <- dplyr::bind_rows(locatcomb, selves)
 locatcomb <- locatcomb %>%
   dplyr::mutate(geodist = purrr::pmap_dbl(locatcomb, function(deme1, deme2){
     # get long lat
-    xy1 <- latticemodel[latticemodel$deme == deme1, c("longnum", "latnum")]
-    xy2 <- latticemodel[latticemodel$deme == deme2, c("longnum", "latnum")]
+    xy1 <- squarecoords[squarecoords$deme == deme1, c("longnum", "latnum")]
+    xy2 <- squarecoords[squarecoords$deme == deme2, c("longnum", "latnum")]
     # euclidean distance
     euc <- dist(rbind(xy1, xy2), method = "euclidean")
     return(euc)})
@@ -63,17 +63,17 @@ locatcomb <- dplyr::bind_rows(locatcomb, locatcomb_expand)
 locatcomb <- locatcomb %>%
   dplyr::filter(!duplicated(locatcomb))
 # now tidy up
-latticemodel_x <- latticemodel %>%
+squarecoords_x <- squarecoords %>%
   dplyr::rename(deme1 = deme,
                 deme1longnum = longnum,
                 deme1latnum = latnum)
-latticemodel_y <- latticemodel %>%
+squarecoords_y <- squarecoords %>%
   dplyr::rename(deme2 = deme,
                 deme2longnum = longnum,
                 deme2latnum = latnum)
 locatcomb <- locatcomb %>%
-  dplyr::left_join(., latticemodel_x, by = "deme1") %>%
-  dplyr::left_join(., latticemodel_y, by = "deme2")
+  dplyr::left_join(., squarecoords_x, by = "deme1") %>%
+  dplyr::left_join(., squarecoords_y, by = "deme2")
 
 # expect this to be lower tri + upper tri + diagonals
 goodegg:::assert_eq(nrow(locatcomb), choose(25,2)*2 + 25)
