@@ -38,7 +38,7 @@ extract_final_measures <- function(discdat) {
 search_grid_full <- readRDS("results/search_grid_full_for_discdat.RDS")
 beststarts <- search_grid_full %>%
   dplyr::group_by(modname) %>%
-  dplyr::mutate(costfin = purrr::map_dbl(cost, extract_final_cost)) %>%
+  dplyr::mutate(costfin = purrr::map_dbl(discret, extract_final_cost)) %>%
   dplyr::filter(costfin == min(costfin))
 # sample if multiple starts OK
 beststarts <- split(beststarts, beststarts$modname)
