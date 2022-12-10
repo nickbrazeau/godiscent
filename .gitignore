@@ -17,5 +17,5 @@ godiscent.Rproj
 sanbox/
 results/
 nohup.out
-run.Rout
+*.Rout
 

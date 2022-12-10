@@ -1,3 +1,5 @@
+
+
 #' @title simple function for extracting final cost
 extract_final_cost <- function(discret) {
   return(discret$cost[length(discret$cost)])
