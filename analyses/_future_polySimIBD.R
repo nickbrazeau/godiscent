@@ -50,5 +50,39 @@ with_progress({
 
 })
 
+
+#............................................................
+# make "wrong IBD" to look at cost
+#...........................................................
+wrongIBD <- ret %>%
+  dplyr::filter(modname == "IsoByDist")
+# make wrong dist based on real dist order
+rightdist <- wrongdist <- wrongIBD$discdat[[1]]$geodist
+wrongdist <- abs( rnorm(length(wrongdist), mean  = mean(wrongdist), sd = sd(wrongdist)) )
+wrongdist[which(rightdist == 0)] <- 0 # perserve w/in diagonal of 0
+
+replace_wrong_dist <- function(discdatsing, wrongdistnum){
+  out <- discdatsing %>%
+    dplyr::mutate(geodist = wrongdistnum)
+  return(out)
+}
+
+# now loop through and replace
+wrongIBD <- wrongIBD %>%
+  dplyr::mutate(modname = "badIsoByDist",
+                discdat = purrr::map(discdat, replace_wrong_dist, wrongdistnum = wrongdist))
+
+# # confirm
+# all( wrongIBD$discdat[[1]]$geodist == wrongIBD$discdat[[2]]$geodist )
+# all( which(wrongIBD$discdat[[1]]$geodist == 0) == which(rightdist == 0) )
+
+# bring together
+ret <- ret %>%
+  dplyr::bind_rows(., wrongIBD) %>%
+  dplyr::arrange(rep, modname)
+
+#............................................................
+# save out
+#...........................................................
 dir.create("results")
 saveRDS(ret, "results/discdat_from_polySimIBD_maestro.RDS")

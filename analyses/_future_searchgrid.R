@@ -15,6 +15,21 @@ library(discent)
 source("R/polysim_wrappers.R")
 source("R/discent_wrappers.R")
 source("R/utils.R")
+set.seed(48)
+
+#............................................................
+# read in prior polySimIBD results
+#...........................................................
+sims <- readRDS("results/discdat_from_polySimIBD_maestro.RDS")
+# assume one use case per sim for optimal start
+IBDsmpl <- sample(which(sim$modname == "IsoByDist"), size = 1)
+latsmpl <- sample(which(sim$modname == "lattice"), size = 1)
+torsmpl <- sample(which(sim$modname == "torus"), size = 1)
+Nesmpl <- sample(which(sim$modname == "NeVary"), size = 1)
+badIBDsmpl <- sample(which(sim$modname == "badIsoByDist"), size = 1)
+# downsample
+sims <- sims[c(IBDsmpl, latsmpl, torsmpl, Nesmpl, badIBDsmpl), ]
+
 
 #............................................................
 # make search grid
@@ -47,11 +62,6 @@ search_grid <- search_grid %>%
 #............................................................
 # Perform search
 #...........................................................
-#......................
-# read in results
-#......................
-sims <- readRDS("results/discdat_from_polySimIBD_maestro.RDS")
-sims <- sims[1:4,] # assume one use case per sim for optimal start
 
 # expand out grid
 search_grid_full <- lapply(1:nrow(sims), function(x){

@@ -47,12 +47,13 @@ $$
 2. Model accuracy/realism
 
 ## Simulated Data 
-Using `polySimIBD` have four frameworks of simulation, which for each we ran 100 independent realizations (i.e. same migration, same Ne = different seed). For each framework, there are 25 demes laid out on a 5x5 square plane. Frameworks are as follows: 
+Using `polySimIBD` have five frameworks of simulation, which for each we ran 100 independent realizations (i.e. same migration, same Ne = different seed). For each framework, there are 25 demes laid out on a 5x5 square plane. Frameworks are as follows: 
 
 1. Isolation by Distance, Ne Constant (migrations are $\frac{1}{dist}$)    
 2. Lattice (can only move to neighbors, no diagonal moves; bounded by borders), Ne Constant   
 3. Torus (as above, but no longitudinal boundaries = cylinder), Ne Constant  
-4. IBDist, Ne: 5,25,50,100,250 across rows of 5x5 square matrix   
+4. IBDist, Ne: 5,25,50,100,250 across rows of 5x5 square matrix 
+4. Isolation by Distance with wrong distances (to analyze cost)
 
 
 
@@ -150,7 +151,7 @@ search_grid_full %>%
 
 
 ## Model Accuracy 
-Note, here we are running the same start parameters identified from search grid above for our 100 realizations for each model framework. Therefore, there are 4x100 final global M estimations and 4x25x100 final Fi estimations. 
+Note, here we are running the same start parameters identified from search grid above for our 100 realizations for each model framework. Therefore, there are 5x100 final global M estimations and 5x25x100 final Fi estimations. 
 
 ```{r}
 # purely for memory
@@ -291,10 +292,10 @@ discretsum %>%
 
 ```
 
-##### 
 
 
-
+## Costs Estimates for Fit
+Here we will analyze whether wrong geographic distances results in worst cost...
 
 
 
