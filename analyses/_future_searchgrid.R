@@ -22,11 +22,11 @@ set.seed(48)
 #...........................................................
 sims <- readRDS("results/discdat_from_polySimIBD_maestro.RDS")
 # assume one use case per sim for optimal start
-IBDsmpl <- sample(which(sim$modname == "IsoByDist"), size = 1)
-latsmpl <- sample(which(sim$modname == "lattice"), size = 1)
-torsmpl <- sample(which(sim$modname == "torus"), size = 1)
-Nesmpl <- sample(which(sim$modname == "NeVary"), size = 1)
-badIBDsmpl <- sample(which(sim$modname == "badIsoByDist"), size = 1)
+IBDsmpl <- sample(which(sims$modname == "IsoByDist"), size = 1)
+latsmpl <- sample(which(sims$modname == "lattice"), size = 1)
+torsmpl <- sample(which(sims$modname == "torus"), size = 1)
+Nesmpl <- sample(which(sims$modname == "NeVary"), size = 1)
+badIBDsmpl <- sample(which(sims$modname == "badIsoByDist"), size = 1)
 # downsample
 sims <- sims[c(IBDsmpl, latsmpl, torsmpl, Nesmpl, badIBDsmpl), ]
 
