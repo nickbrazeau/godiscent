@@ -34,17 +34,17 @@ sims <- sims[c(IBDsmpl, latsmpl, torsmpl, Nesmpl, badIBDsmpl), ]
 # make search grid
 #...........................................................
 # look up tables
-fstartsvec <- seq(from = 0.1, to = 0.9, by = 0.05)
-mstartsvec <- 10^-seq(1,6)
-flearnsvec <- 10^-seq(1,10)
-mlearnsvec <- 10^-seq(5,15)
+fstartsvec <- seq(from = 0.05, to = 0.5, by = 0.05)
+mstartsvec <- c(0.1, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5) # standardizing geodistance
+flearnsvec <- 10^-seq(2,7)
+mlearnsvec <- 10^-seq(1,10)
 search_grid <- expand.grid(fstartsvec, mstartsvec, flearnsvec, mlearnsvec)
 colnames(search_grid) <- c("fstart", "mstart", "f_learn", "m_learn")
 
 # template start
 tempstart_params <- rep(0.1, 25)
 names(tempstart_params) <- as.character(1:25)
-tempstart_params <- c(tempstart_params, "m" = 1e-3)
+tempstart_params <- c(tempstart_params, "m" = 1)
 
 # liftover to start param format
 liftover_start_params <- function(fstart, mstart, start_param_template) {
