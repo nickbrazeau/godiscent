@@ -15,12 +15,13 @@ library(progressr)
 library(polySimIBD)
 source("R/polysim_wrappers.R")
 source("R/utils.R")
+set.seed(48)
 
 #............................................................
 # read in and make polysim IBD dataframe
 #...........................................................
 reps <- 100
-maestro <- readRDS("mkdata/simulation_maestro.RDS")
+maestro <- readRDS("simdata/simulation_setup/simulation_maestro.RDS")
 maestro <- lapply(1:reps, function(x){
   maestro <- maestro %>%
     dplyr::mutate(rep = x) %>%
@@ -28,7 +29,7 @@ maestro <- lapply(1:reps, function(x){
   return(maestro)}
 ) %>%
   dplyr::bind_rows()
-locatcomb <- readRDS("mkdata/simdata/locatcombo.rds")
+locatcomb <- readRDS("simdata/simulation_setup/inputs/locatcombo.rds")
 
 
 #............................................................
@@ -84,5 +85,5 @@ ret <- ret %>%
 #............................................................
 # save out
 #...........................................................
-dir.create("results")
-saveRDS(ret, "results/discdat_from_polySimIBD_maestro.RDS")
+dir.create("simdata/sim_results/", recursive = T)
+saveRDS(ret, "simdata/sim_results/discdat_from_polySimIBD_maestro.RDS")

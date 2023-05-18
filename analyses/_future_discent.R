@@ -19,7 +19,7 @@ source("R/utils.R")
 #............................................................
 # find best starts
 #...........................................................
-search_grid_full <- readRDS("results/search_grid_full_for_discdat.RDS")
+search_grid_full <- readRDS("disc_results/search_grid_full_for_discdat.RDS")
 beststarts <- search_grid_full %>%
   dplyr::group_by(modname) %>%
   dplyr::mutate(costfin = purrr::map_dbl(discret, extract_final_cost)) %>%
@@ -44,7 +44,7 @@ beststarts <- beststarts %>%
 #............................................................
 # read in discdat and join starts
 #...........................................................
-discdat <- readRDS("results/discdat_from_polySimIBD_maestro.RDS")
+discdat <- readRDS("simdata/sim_results/discdat_from_polySimIBD_maestro.RDS")
 # bring home
 fulldiscdat <- dplyr::left_join(discdat, beststarts, by = "modname")
 
@@ -61,7 +61,6 @@ ret$discret <- furrr::future_pmap(fulldiscdat[,c("discdat", "start_params", "f_l
                                   .options = furrr_options(seed = TRUE))
 
 # out
-dir.create("results", recursive = T)
-saveRDS(ret, "results/discresults_for_discdat.RDS")
+saveRDS(ret, "disc_results/discresults_for_discdat.RDS")
 
 

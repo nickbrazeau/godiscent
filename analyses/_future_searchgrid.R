@@ -19,7 +19,7 @@ set.seed(48)
 #............................................................
 # read in prior polySimIBD results
 #...........................................................
-sims <- readRDS("results/discdat_from_polySimIBD_maestro.RDS")
+sims <- readRDS("simdata/sim_results/discdat_from_polySimIBD_maestro.RDS")
 # assume one use case per sim for optimal start
 IBDsmpl <- sample(which(sims$modname == "IsoByDist"), size = 1)
 latsmpl <- sample(which(sims$modname == "lattice"), size = 1)
@@ -89,6 +89,6 @@ search_grid_full <- search_grid_full %>%
   dplyr::select(c("modname", "rep", "start_params", "f_learn", "m_learn", "discret", "finalcost"))
 
 
-dir.create("results", recursive = T)
-saveRDS(search_grid_full, "results/search_grid_full_for_discdat.RDS")
+dir.create("disc_results", recursive = T)
+saveRDS(search_grid_full, "disc_results/search_grid_full_for_discdat.RDS")
 
