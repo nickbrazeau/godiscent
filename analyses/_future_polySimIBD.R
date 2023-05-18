@@ -57,21 +57,34 @@ with_progress({
 #...........................................................
 wrongIBD <- ret %>%
   dplyr::filter(modname == "IsoByDist")
-# make wrong dist based on real dist order
-rightdist <- wrongdist <- wrongIBD$discdat[[1]]$geodist
-wrongdist <- abs( rnorm(length(wrongdist), mean  = mean(wrongdist), sd = sd(wrongdist)) )
-wrongdist[which(rightdist == 0)] <- 0 # perserve w/in diagonal of 0
 
-replace_wrong_dist <- function(discdatsing, wrongdistnum){
+
+# make wrong dist by randomly adding noise to real distances
+wrongdist <- realdist <- sort(unique(wrongIBD$discdat[[1]]$geodist)) # sort for perserving 0
+wrongdist <- wrongdist + rnorm(length(wrongdist), mean = mean(wrongdist), sd = sd(wrongdist))
+if(!all(wrongdist > 0)){
+  warning("Random distances not all positive; converted")
+  wrongdist <- abs(wrongdist)
+}
+wrongdist[1] <- 0
+# combine for liftover
+distkey <- tibble::tibble(
+  geodist = realdist,
+  newgeodist = wrongdist)
+
+# function for liftover
+replace_wrong_dist <- function(discdatsing, distkeylo){
   out <- discdatsing %>%
-    dplyr::mutate(geodist = wrongdistnum)
+    dplyr::left_join(., distkeylo, by = "geodist") %>%
+    dplyr::select(-c("geodist")) %>%
+    dplyr::rename(geodist = newgeodist)
   return(out)
 }
 
 # now loop through and replace
 wrongIBD <- wrongIBD %>%
   dplyr::mutate(modname = "badIsoByDist",
-                discdat = purrr::map(discdat, replace_wrong_dist, wrongdistnum = wrongdist))
+                discdat = purrr::map(discdat, replace_wrong_dist, distkeylo = distkey))
 
 # # confirm
 # all( wrongIBD$discdat[[1]]$geodist == wrongIBD$discdat[[2]]$geodist )
