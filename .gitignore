@@ -15,7 +15,6 @@ inst/doc
 todo.txt
 godiscent.Rproj
 sanbox/
-results/
 nohup.out
 *.Rout
 .future/
