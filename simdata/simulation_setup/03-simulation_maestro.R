@@ -8,14 +8,14 @@
 ## Notes:
 ## .................................................................................
 library(tidyverse)
-simulation_df <- readRDS("mkdata/simdata/migmat_framework.RDS")
+simulation_df <- readRDS("simdata/simulation_setup/migmat_framework.RDS")
 simulation_df <- dplyr::bind_rows(simulation_df, simulation_df[1,])
 simulation_df$modname[4] <- "NeVary"
 
 #......................
 # magic numbers
 #......................
-lambdaCOI <-  readRDS("mkdata/simdata/optim_lambda.RDS")[2] #Default from verity et al for a coi 2 = 1.593624 given that the COI in the DRC: 2.23 (2.15– 2.31)
+lambdaCOI <-  readRDS("simdata/simulation_setup/optim_lambda.RDS")[2] #Default from verity et al for a coi 2 = 1.593624 given that the COI in the DRC: 2.23 (2.15– 2.31)
 tlim <- 25 # assume IBD to 25 generations for recent coalescent
 mscale <- 0.5 # assume that our mix of superinfection vs coinfection is split
 nDemes <- nrow(simulation_df$migmat[[1]])
@@ -56,4 +56,4 @@ simulation_df <- simulation_df %>%
 #............................................................
 # save out
 #...........................................................
-saveRDS(simulation_df, "mkdata/simulation_maestro.RDS")
+saveRDS(simulation_df, "simdata/simulation_setup/simulation_maestro.RDS")

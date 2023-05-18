@@ -32,7 +32,7 @@ squarecoords <- squarecoords %>%
 
 # save out basic coords
 saveRDS(object = squarecoords,
-        "mkdata/simdata/squarecoords.rds")
+        "simdata/simulation_setup/inputs/squarecoords.rds")
 
 #......................
 # cartesian distance matrix
@@ -78,8 +78,7 @@ locatcomb <- locatcomb %>%
 # expect this to be lower tri + upper tri + diagonals
 goodegg:::assert_eq(nrow(locatcomb), choose(25,2)*2 + 25)
 # save out for downstream
-dir.create("mkdata/simdata/", recursive = T)
-saveRDS(locatcomb, "mkdata/simdata/locatcombo.rds")
+saveRDS(locatcomb, "simdata/simulation_setup/inputs/locatcombo.rds")
 
 
 #......................
@@ -156,6 +155,5 @@ migmatdf$migmat[migmatdf$modname == "torus"] <- list(torusmigmat)
 #............................................................
 # save out
 #...........................................................
-dir.create("mkdata/simdata/", recursive = T)
-saveRDS(migmatdf, "mkdata/simdata/migmat_framework.RDS")
+saveRDS(migmatdf, "simdata/simulation_setup/inputs/migmat_framework.RDS")
 
