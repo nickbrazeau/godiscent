@@ -26,12 +26,14 @@ beststarts <- search_grid_full %>%
   dplyr::filter(costfin == min(costfin, na.rm = T))
 # sample if multiple starts OK
 beststarts <- split(beststarts, beststarts$modname)
-cnts <- unlist(lapply(beststarts, nrow))
+if ( length(beststarts) > length(unique(names(beststarts))) ) {
+  cnts <- unlist(lapply(beststarts, nrow))
 
-for (i in 1:length(cnts)) {
-  if (cnts[[i]] > 1) {
-    samp <- sample(1:cnts[i], size = 1)
-    beststarts[[i]] <- beststarts[[i]][samp,]
+  for (i in 1:length(cnts)) {
+    if (cnts[[i]] > 1) {
+      samp <- sample(1:cnts[i], size = 1)
+      beststarts[[i]] <- beststarts[[i]][samp,]
+    }
   }
 }
 
@@ -61,6 +63,6 @@ ret$discret <- furrr::future_pmap(fulldiscdat[,c("discdat", "start_params", "f_l
                                   .options = furrr_options(seed = TRUE))
 
 # out
-saveRDS(ret, "disc_results/discresults_for_discdat.RDS")
+saveRDS(ret, "disc_results/final_discresults_for_discdat.RDS")
 
 
