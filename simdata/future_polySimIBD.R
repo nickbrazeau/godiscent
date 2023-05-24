@@ -37,7 +37,7 @@ locatcomb <- readRDS("simdata/simulation_setup/inputs/locatcombo.rds")
 #...........................................................
 ret <- maestro %>% dplyr::select(c("modname", "rep"))
 plan(future.batchtools::batchtools_slurm, workers = 1028,
-     template = "analyses/slurm_discent.tmpl")
+     template = "simdata/slurm_discent.tmpl")
 
 # add progress bar
 with_progress({
