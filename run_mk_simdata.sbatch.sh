@@ -3,7 +3,7 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=nbrazeau@med.unc.edu
 #SBATCH --ntasks=1
-#SBATCH --mem=96G
+#SBATCH --mem=8G
 #SBATCH --time=3-00:00:00
 #SBATCH --output=%j.log
 

@@ -18,7 +18,8 @@ get_discentwrapper <- function(discdat,
                                          b2 = 0.999,
                                          e = 1e-8,
                                          normalize_geodist = TRUE,
-                                         steps = 1e5,
+                                         steps = 5e5,
+                                         thin = 50,
                                          report_progress = FALSE,
                                          return_verbose = FALSE)
   return(out)

@@ -68,10 +68,6 @@ search_grid_full <- lapply(simrealization, function(x){
 fulldiscdat <- dplyr::left_join(discdat, search_grid_full, by = "simrealization")
 
 
-# TODO TEMP
-rws <- sample(1:nrow(fulldiscdat), size = 100)
-fulldiscdat <- fulldiscdat[rws,]
-
 #............................................................
 # run discent
 #...........................................................
@@ -85,6 +81,7 @@ ret$discret <- furrr::future_pmap(fulldiscdat[,c("discdat", "start_params", "f_l
                                   .options = furrr_options(seed = TRUE))
 
 # out
+dir.create("simdata/disc_results/", recursive = T)
 saveRDS(ret, "simdata/disc_results/final_discresults_for_discdat.RDS")
 
 
