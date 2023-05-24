@@ -22,8 +22,8 @@ source("R/utils.R")
 search_grid_full <- readRDS("disc_results/search_grid_full_for_discdat.RDS")
 beststarts <- search_grid_full %>%
   dplyr::group_by(modname) %>%
-  dplyr::mutate(costfin = purrr::map_dbl(discret, extract_final_cost)) %>%
-  dplyr::filter(costfin == min(costfin, na.rm = T))
+  dplyr::mutate(costfin = purrr::map_dbl(discret, extract_final_cost))
+
 # sample if multiple starts OK
 beststarts <- split(beststarts, beststarts$modname)
 if ( length(beststarts) > length(unique(names(beststarts))) ) {

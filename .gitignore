@@ -22,3 +22,5 @@ nohup.out
 simdata/sim_results/
 
 disc_results/
+
+*.html

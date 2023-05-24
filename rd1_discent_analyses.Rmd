@@ -33,13 +33,14 @@ source("R/utils.R")
 # Overview 
 **Model conceptualization**: 
 $$
-r_{ij} = \left(\frac{f_i + f_j}{2}\right) exp\left\{ -d_{ij} M \right\}
+r_{ij} = \left(\frac{f_i + f_j}{2}\right) exp\left\{ \frac{-d_{ij}}{M} \right\}
 $$
 
 
 **Coding Decisions**: 
 1. M and F parameters have different learning rates (uncoupled) 
 2. M must be positive 
+3. ADAM gradient descent optimizer
 
 
 ## Goals 
@@ -54,11 +55,29 @@ Using `polySimIBD` have five frameworks of simulation, which for each we ran 100
 3. Torus (as above, but no longitudinal boundaries = cylinder), Ne Constant  
 4. IBDist, Ne: 5,25,50,100,250 across rows of 5x5 square matrix 
 4. Isolation by Distance with wrong distances (to analyze cost)
+\br
+**tlim here now 25 generations** 
+\br
 
 
 
 ## Model Stability
-Goal to find the best start parameters for each framework. Selected first realization and made assumption that start parameters would be consistent across realizations within each framework. However, this also provides the opportunity to determine how much start parameters effect final estimates of DISCs (called `final_fis` in code) and final global migration rates (called `final_ms`). Our search grid lookover the following 11220 combinations:    
+```{r}
+#............................................................
+# Part 1: Model Stability
+#...........................................................
+# read in model framework
+migmatdf <- readRDS("simdata/simulation_setup/inputs/migmat_framework.RDS")
+  
+coordgrid <- readRDS("simdata/simulation_setup/inputs/squarecoords.rds")
+
+# read in search grid 
+search_grid_fullraw <- readRDS("disc_results/search_grid_full_for_discdat.RDS")
+
+```
+
+Goal to find the best start parameters for each framework. Selected first realization and made assumption that start parameters would be consistent across realizations within each framework. However, this also provides the opportunity to determine how much start parameters effect final estimates of DISCs (called `final_fis` in code) and final global migration rates (called `final_ms`). Our search grid looked over the following **`r nrow(search_grid_fullraw)` combinations**:    
+
 \br
 ```
 # look up tables
@@ -68,18 +87,6 @@ flearnsvec <- 10^-seq(1,10)
 mlearnsvec <- 10^-seq(5,15)
 search_grid <- expand.grid(fstartsvec, mstartsvec, flearnsvec, mlearnsvec)
 colnames(search_grid) <- c("fstart", "mstart", "f_learn", "m_learn")
-```
-```{r}
-#............................................................
-# Part 1: Model Stability
-#...........................................................
-# read in model framework
-migmatdf <- readRDS("mkdata/simdata/migmat_framework.RDS")
-coordgrid <- readRDS("mkdata/simdata/squarecoords.rds")
-
-# read in search grid 
-search_grid_fullraw <- readRDS("results/search_grid_full_for_discdat.RDS")
-
 ```
 
 
@@ -114,7 +121,7 @@ search_grid_full %>%
                  color = rep)) +
   theme_linedraw() +
   scale_color_viridis_c() + 
-  facet_wrap(~modname) +
+  facet_wrap(~modname, scales = "free") +
   ggtitle("Costs vs Final Fs") +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 90))
@@ -127,7 +134,7 @@ search_grid_full %>%
                  color = rep)) +
   theme_linedraw() +
   scale_color_viridis_c() + 
-  facet_wrap(~modname) +
+  facet_wrap(~modname, scales = "free") +
   ggtitle("Costs vs Final Ms") +
   theme(legend.position = "none",
         axis.text.x = element_text(angle = 90))
@@ -141,7 +148,7 @@ search_grid_full %>%
                  color = finalcost)) +
   theme_linedraw() +
   scale_color_viridis_c() + 
-  facet_wrap(~modname) +
+  facet_wrap(~modname, scales = "free") +
   ggtitle("Final Fs vs Final Ms") +
   theme(axis.text.x = element_text(angle = 90))
 ```
@@ -162,7 +169,7 @@ gc()
 #............................................................
 # Part 2: Model Accuracy
 #...........................................................
-discretsraw <- readRDS("results/discresults_for_discdat.RDS")
+discretsraw <- readRDS("disc_results/final_discresults_for_discdat.RDS")
 
 
 discrets <- discretsraw %>%
@@ -295,7 +302,21 @@ discretsum %>%
 
 
 ## Costs Estimates for Fit
-Here we will analyze whether wrong geographic distances results in worst cost...
+Here we will analyze whether wrong geographic distances results in worst cost. 
+
+```{r}
+
+discrets_dist_consider <- discrets %>% 
+  dplyr::filter(modname %in% c("IsoByDist", "badIsoByDist"))
+
+discrets_dist_consider %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = modname, y = finalcost)) +
+  theme_linedraw() +
+  ggtitle("Costs over IBD with Correct and Misspecified Distance")
+  
+
+```
 
 
 
