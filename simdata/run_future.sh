@@ -2,13 +2,12 @@
 #SBATCH --job-name=polysimIBD
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=nbrazeau@med.unc.edu
-#SBATCH --ntasks=36
+#SBATCH --ntasks=1
 #SBATCH --mem=96G
 #SBATCH --time=3-00:00:00
-#SBATCH --output=polysim_%j.log
+#SBATCH --output=%j.log
 
 ## Uncomment line to run each step of future
-Rscript analyses/_future_polySimIBD.R 2> polysim.log
-## Rscript analyses/_future_searchgrid.R 2> searchgrid.log
-## Rscript analyses/_future_discent.R 2> discent.log
+## Rscript simdata/_future_polySimIBD.R 2> polysim.log
+## Rscript simdata/_future_discent.R 2> discent.log
 
