@@ -67,6 +67,9 @@ search_grid_full <- lapply(simrealization, function(x){
 #......................
 fulldiscdat <- dplyr::left_join(discdat, search_grid_full, by = "simrealization")
 
+#TODO remove after test PRN
+check <- sample(1:nrow(fulldiscdat), size = 500)
+fulldiscdat <- fulldiscdat[check, ]
 
 #............................................................
 # run discent
@@ -74,7 +77,7 @@ fulldiscdat <- dplyr::left_join(discdat, search_grid_full, by = "simrealization"
 ret <- fulldiscdat %>%
   dplyr::select(c("modname", "rep", "simrealization"))
 # run out on Longleaf
-plan(future.batchtools::batchtools_slurm, workers = 1028, # may nodes
+plan(future.batchtools::batchtools_slurm, workers = nrow(fulldiscdat),
      template = "simdata/slurm_discent.tmpl")
 ret$discret <- furrr::future_pmap(fulldiscdat[,c("discdat", "start_params", "f_learn", "m_learn")],
                                   get_discentwrapper,
