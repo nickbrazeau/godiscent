@@ -68,7 +68,7 @@ search_grid_full <- lapply(simrealization, function(x){
 fulldiscdat <- dplyr::left_join(discdat, search_grid_full, by = "simrealization")
 
 #TODO remove after test PRN
-check <- sample(1:nrow(fulldiscdat), size = 500)
+check <- sample(1:nrow(fulldiscdat), size = 2000)
 fulldiscdat <- fulldiscdat[check, ]
 
 #............................................................
