@@ -19,8 +19,6 @@ source("R/utils.R")
 # read in discdat from polySimIBD to run DISCent on
 #...........................................................
 discdat <- readRDS("simdata/sim_results/discdat_from_polySimIBD_maestro.RDS")
-discdat <- discdat %>%
-  dplyr::mutate(simrealization = 1:dplyr::n())
 
 #............................................................
 # make search grid of start params
@@ -50,41 +48,42 @@ liftover_start_params <- function(fstart, mstart, start_param_template) {
 search_grid <- search_grid %>%
   dplyr::mutate(start_params = purrr::map2(fstart, mstart, liftover_start_params,
                                            start_param_template = tempstart_params)) %>%
-  dplyr::select(c("start_params", "f_learn", "m_learn"))
+  dplyr::select(c("start_params", "f_learn", "m_learn")) %>%
+  dplyr::mutate(start_param_realization = 1:nrow(.))
 #......................
-# expand out for reps
+# expand discdat out for reps
 #......................
-simrealization <- 1:nrow(discdat)
-search_grid_full <- lapply(simrealization, function(x){
-  search_grid <- search_grid %>%
-    dplyr::mutate(simrealization = x) %>%
-    dplyr::relocate(., simrealization)
-}) %>%
-  dplyr::bind_rows()
+fulldiscdat <- lapply(1:nrow(discdat), function(x){
+  dplyr::bind_cols(discdat[x,], search_grid)}) %>%
+  dplyr::bind_rows(.)
+
 
 #......................
-# bring home
+# now batch by modname and rep
 #......................
-fulldiscdat <- dplyr::left_join(discdat, search_grid_full, by = "simrealization")
+fulldiscdat <- fulldiscdat %>%
+  tidyr::nest(data = c(discdat, start_param_realization, start_params, f_learn, m_learn))
 
-#TODO remove after test PRN
-check <- sample(1:nrow(fulldiscdat), size = 2000)
-fulldiscdat <- fulldiscdat[check, ]
 
 #............................................................
 # run discent
 #...........................................................
-ret <- fulldiscdat %>%
-  dplyr::select(c("modname", "rep", "simrealization"))
 # run out on Longleaf
 plan(future.batchtools::batchtools_slurm, workers = nrow(fulldiscdat),
      template = "simdata/slurm_discent.tmpl")
-ret$discret <- furrr::future_pmap(fulldiscdat[,c("discdat", "start_params", "f_learn", "m_learn")],
-                                  get_discentwrapper,
-                                  .options = furrr_options(seed = TRUE))
+
+fulldiscdat <- fulldiscdat %>%
+  dplyr::mutate(discret = furrr::future_map(data,
+                                            get_discentwrapper,
+                                            .options = furrr_options(seed = TRUE)))
+
+fulldiscdat <- fulldiscdat %>%
+  tidyr::unnest(cols = c("data", "discret")) %>%
+  dplyr::select(-c("discdat")) # replicated across modname - a lot of mem/data not needed in final product
+
 
 # out
 dir.create("simdata/disc_results/", recursive = T)
-saveRDS(ret, "simdata/disc_results/final_discresults_for_discdat.RDS")
+saveRDS(fulldiscdat, "simdata/disc_results/final_discresults_for_discdat.RDS")
 
 
