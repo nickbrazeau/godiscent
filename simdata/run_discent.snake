@@ -29,7 +29,7 @@ sim_map = read_manifest(config["simmap"])
 sim_dict = {sim_map['paramcnt'][i]:
     {'modname': sim_map['modname'][i],
     'rep': sim_map['rep'][i],
-    'datpath': sim_map['datpath'][i]}
+    'datpath': RROOT + sim_map['datpath'][i]}
 for i in range(len(sim_map['paramcnt']))}
 
 
