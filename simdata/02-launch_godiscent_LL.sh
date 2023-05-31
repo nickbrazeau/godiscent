@@ -6,7 +6,7 @@ NODES=1028 # max number of cluster nodes
 WAIT=30 # number of seconds to wait for files to appear, absorbing some file system latency
 
 snakemake \
-	--snakefile $ROOT/simdata/run_godiscent.snake \
+	--snakefile $ROOT/simdata/run_discent.snake \
 	--configfile $ROOT/simdata/config_godiscent_batch_LL.yaml \
 	--printshellcmds \
 	--directory $WD \
