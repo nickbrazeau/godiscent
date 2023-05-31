@@ -98,5 +98,5 @@ ret <- ret %>%
 #............................................................
 # save out
 #...........................................................
-dir.create("simdata/sim_results/", recursive = T)
-saveRDS(ret, "simdata/sim_results/discdat_from_polySimIBD_maestro.RDS")
+dir.create("simdata/polysim_results/", recursive = T)
+saveRDS(ret, "simdata/polysim_results/discdat_from_polySimIBD_maestro.RDS")
