@@ -18,9 +18,7 @@ sanbox/
 nohup.out
 *.Rout
 .future/
-
-simdata/sim_results/
-
-disc_results/
-
-*.html
+# input  and result files too large for GH
+simdata/polysim_results/
+simdata/discent_SG_guides/
+simdata/disc_results/

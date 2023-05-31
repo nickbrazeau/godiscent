@@ -12,13 +12,12 @@ library(furrr)
 library(future)
 library(future.batchtools)
 library(discent)
-source("R/discent_wrappers.R")
 source("R/utils.R")
 
 #............................................................
 # read in discdat from polySimIBD to run DISCent on
 #...........................................................
-discdat <- readRDS("simdata/sim_results/discdat_from_polySimIBD_maestro.RDS")
+discdat <- readRDS("simdata/polysim_results/discdat_from_polySimIBD_maestro.RDS")
 
 #............................................................
 # make search grid of start params
@@ -66,24 +65,23 @@ fulldiscdat <- fulldiscdat %>%
 
 
 #............................................................
-# run discent
+# save out discent plan for Snakemake
 #...........................................................
-# run out on Longleaf
-plan(future.batchtools::batchtools_slurm, workers = nrow(fulldiscdat),
-     template = "simdata/slurm_discent.tmpl")
-
+SGpath <- "simdata/discent_SG_guides/"
+dir.create(SGpath)
+# write out for each now
+writeSGrds <- function(modname, rep, data, SGpath){
+  outnm <- paste0(SGpath, modname, "_rep", rep, "_inputs.RDS")
+  saveRDS(data, outnm)
+  return(outnm)
+}
 fulldiscdat <- fulldiscdat %>%
-  dplyr::mutate(discret = furrr::future_map(data,
-                                            get_discentwrapper,
-                                            .options = furrr_options(seed = TRUE)))
-
-fulldiscdat <- fulldiscdat %>%
-  tidyr::unnest(cols = c("data", "discret")) %>%
-  dplyr::select(-c("discdat")) # replicated across modname - a lot of mem/data not needed in final product
-
-
-# out
-dir.create("simdata/disc_results/", recursive = T)
-saveRDS(fulldiscdat, "simdata/disc_results/final_discresults_for_discdat.RDS")
-
+  dplyr::mutate(datpath =
+                  purrr::pmap_chr(fulldiscdat, writeSGrds, SGpath = SGpath))
+fulldiscdattsv <- fulldiscdat %>%
+  dplyr::select(c("modname", "rep", "datpath")) %>%
+  dplyr::mutate(paramcnt = paste0("p", 1:dplyr::n()))
+# save maestro for Snakemake
+readr::write_tsv(x = fulldiscdattsv,
+                 file = "simdata/disc_SGparamguide.tsv")
 

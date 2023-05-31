@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+
+"""
+Simple snakemake script for iterating over map file to run the `fomes` SIR
+stochatstic, dynamic network simulator
+"""
+
+from __future__ import print_function
+
+import os
+import sys
+import yaml
+import re
+import pandas as pd
+
+## read project-specific configuration options and functions
+RROOT = config["rroot"]
+OUTROOT = config["outdir"]
+
+def read_manifest(file_path):
+    # read manifest and extract out relevant params
+    df = pd.read_csv(file_path, sep='\t')
+    simparams = df.to_dict()
+    return simparams
+
+## read simulation manifest as dictionary which we can iterate through
+sim_map = read_manifest(config["simmap"])
+# Manually transform dictionary to map "paramcnt" values to our wanted parameter values
+sim_dict = {sim_map['paramcnt'][i]:
+    {'modname': sim_map['modname'][i],
+    'rep': sim_map['rep'][i],
+    'datpath': sim_map['datpath'][i]}
+for i in range(len(sim_map['paramcnt']))}
+
+
+# rules
+rule all:
+    input: expand("{paramcnt}", paramcnt = list(sim_map["paramcnt"].values()))
+
+rule run_simulation:
+    output: "{paramcnt}"
+    log: OUTROOT + "logs/{paramcnt}.log"
+    params:
+        rexec = RROOT + "R/godiscent_wrapper_simruns.R",
+        modname = lambda wildcards: sim_dict[wildcards.paramcnt]['modname'],
+        rep = lambda wildcards: sim_dict[wildcards.paramcnt]['rep'],
+        datpath = lambda wildcards: sim_dict[wildcards.paramcnt]['datpath'],
+        outdir = OUTROOT,
+    shell:
+        r"""
+        Rscript {params.rexec} \
+        --mod {params.modname} \
+        --rep {params.rep} \
+        --datpath {params.datpath} \
+        --outdir {params.outdir} \
+        2> {log}
+        """
