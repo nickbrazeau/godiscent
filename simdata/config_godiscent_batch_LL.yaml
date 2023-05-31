@@ -1,0 +1,5 @@
+# configuration for simulation runs
+
+rroot:  /proj/ideel/meshnick/users/NickB/Projects/godiscent/
+simmap: /proj/ideel/meshnick/users/NickB/Projects/godiscent/simdata/disc_SGparamguide.tsv
+outdir: /work/users/n/f/nfb/Projects/godiscent/simdata/disc_results/
