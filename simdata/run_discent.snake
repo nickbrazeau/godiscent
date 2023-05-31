@@ -44,7 +44,7 @@ rule run_simulation:
         rexec = RROOT + "R/godiscent_wrapper_simruns.R",
         modname = lambda wildcards: sim_dict[wildcards.paramcnt]['modname'],
         rep = lambda wildcards: sim_dict[wildcards.paramcnt]['rep'],
-        datpath = RROOT + lambda wildcards: sim_dict[wildcards.paramcnt]['datpath'],
+        datpath = lambda wildcards: sim_dict[wildcards.paramcnt]['datpath'],
         outdir = OUTROOT,
     shell:
         r"""
