@@ -27,9 +27,8 @@ def read_manifest(file_path):
 sim_map = read_manifest(config["simmap"])
 # Manually transform dictionary to map "outpath" values to our wanted parameter values
 sim_dict = {sim_map['outpath'][i]:
-    {'datpath': RROOT + sim_map['datpath'][i]
+    {'datpath': RROOT + sim_map['datpath'][i]}
 for i in range(len(sim_map['outpath']))}
-
 
 # rules
 rule all:
