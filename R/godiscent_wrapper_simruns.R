@@ -113,7 +113,7 @@ option_list=list(
               help = paste("Output fn to write discent result"),
               metavar = "character"),
 
-  optparse::make_option(c("-od", "--outdir"),
+  optparse::make_option(c("-d", "--outdir"),
                         type = "character", default = NULL,
                         help = paste("Output dir to write discent result"),
                         metavar = "character")
