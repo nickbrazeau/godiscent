@@ -75,13 +75,17 @@ writeSGrds <- function(modname, rep, data, SGpath){
   saveRDS(data, outnm)
   return(outnm)
 }
+# make output file
+getout <- function(modname, rep, data) {
+  return(paste0(modname, "_rep", rep, "_DISCret.RDS"))
+}
+
 fulldiscdat <- fulldiscdat %>%
   dplyr::mutate(datpath =
-                  purrr::pmap_chr(fulldiscdat, writeSGrds, SGpath = SGpath))
+                  purrr::pmap_chr(., writeSGrds, SGpath = SGpath),
+                outpath = purrr::pmap_chr(., getout))
 fulldiscdattsv <- fulldiscdat %>%
-  dplyr::select(c("modname", "rep", "datpath")) %>%
-  dplyr::mutate(paramcnt = paste0("p", 1:dplyr::n()))
-# save maestro for Snakemake
+  dplyr::select(c("datpath", "outpath"))
 readr::write_tsv(x = fulldiscdattsv,
                  file = "simdata/disc_SGparamguide.tsv")
 

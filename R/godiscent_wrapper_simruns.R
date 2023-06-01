@@ -101,16 +101,6 @@ get_discentwrapper <- function(datpath) {
 #### parse CL inputs     #####
 #++++++++++++++++++++++++++++++++++++++++++
 option_list=list(
-  optparse::make_option(c("-m", "--mod"),
-              type = "character", default = NULL,
-              help = paste("Model type"),
-              metavar = "character"),
-
-
-  optparse::make_option(c("-r", "--rep"),
-              type = "character", default = NULL,
-              help = paste("rep for model to run over"),
-              metavar = "character"),
 
   optparse::make_option(c("-i", "--datpath"),
               type = "character", default = NULL,
@@ -118,34 +108,27 @@ option_list=list(
               metavar = "character"),
 
 
-  optparse::make_option(c("-o", "--outdir"),
+  optparse::make_option(c("-o", "--outpath"),
               type = "character", default = NULL,
-              help = paste("Output directory to write discent result"),
-              metavar = "character")
+              help = paste("Output fn to write discent result"),
+              metavar = "character"),
+
+  optparse::make_option(c("-od", "--outdir"),
+                        type = "character", default = NULL,
+                        help = paste("Output dir to write discent result"),
+                        metavar = "character")
 )
 
 opt_parser <- optparse::OptionParser(option_list = option_list)
 opt <- optparse::parse_args(opt_parser)
 
-
-#++++++++++++++++++++++++++++++++++++++++++
-#### Unpack from CL        #####
-#++++++++++++++++++++++++++++++++++++++++++
-mod <- opt$mod
-rep <- opt$rep
-datpath <- opt$datpath
-outdir <- opt$outdir
-
 #++++++++++++++++++++++++++++++++++++++++++
 ### Run What you Brung ####
 #++++++++++++++++++++++++++++++++++++++++++
-Start <- Sys.time()
-out <- get_discentwrapper(datpath = datpath)
-Sys.time() - Start
+out <- get_discentwrapper(datpath = opt$datpath)
 #save out
-
 saveRDS(out,
-        file = paste0(outdir, "/", mod, "_rep", rep, "_DISCbatch.RDS"))
+        file = paste0(opt$outdir, "/", opt$outpath))
 
 # turn warnings back to default
 options(warn = defaultwarnings)

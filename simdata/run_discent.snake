@@ -25,33 +25,28 @@ def read_manifest(file_path):
 
 ## read simulation manifest as dictionary which we can iterate through
 sim_map = read_manifest(config["simmap"])
-# Manually transform dictionary to map "paramcnt" values to our wanted parameter values
-sim_dict = {sim_map['paramcnt'][i]:
-    {'modname': sim_map['modname'][i],
-    'rep': sim_map['rep'][i],
-    'datpath': RROOT + sim_map['datpath'][i]}
-for i in range(len(sim_map['paramcnt']))}
+# Manually transform dictionary to map "outpath" values to our wanted parameter values
+sim_dict = {sim_map['outpath'][i]:
+    {'datpath': RROOT + sim_map['datpath'][i]
+for i in range(len(sim_map['outpath']))}
 
 
 # rules
 rule all:
-    input: expand("{paramcnt}", paramcnt = list(sim_map["paramcnt"].values()))
+    input: expand("{outpath}", outpath = list(sim_map["outpath"].values()))
 
 rule run_simulation:
-    output: "{paramcnt}"
-    log: OUTROOT + "logs/{paramcnt}.log"
+    output: "{outpath}"
+    log: OUTROOT + "logs/{outpath}.log"
     params:
         rexec = RROOT + "R/godiscent_wrapper_simruns.R",
-        modname = lambda wildcards: sim_dict[wildcards.paramcnt]['modname'],
-        rep = lambda wildcards: sim_dict[wildcards.paramcnt]['rep'],
-        datpath = lambda wildcards: sim_dict[wildcards.paramcnt]['datpath'],
+        datpath = lambda wildcards: sim_dict[wildcards.outpath]['datpath'],
         outdir = OUTROOT,
     shell:
         r"""
         Rscript {params.rexec} \
-        --mod {params.modname} \
-        --rep {params.rep} \
         --datpath {params.datpath} \
-        --outdir {params.outdir} \
+        --outdir {param.outdir} \
+        --outpath {output} \
         2> {log}
         """
