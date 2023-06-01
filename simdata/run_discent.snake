@@ -46,7 +46,7 @@ rule run_simulation:
         r"""
         Rscript {params.rexec} \
         --datpath {params.datpath} \
-        --outdir {param.outdir} \
+        --outdir {params.outdir} \
         --outpath {output} \
         2> {log}
         """
