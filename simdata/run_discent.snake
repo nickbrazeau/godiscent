@@ -32,7 +32,7 @@ for i in range(len(sim_map['outpath']))}
 
 # rules
 rule all:
-    input: expand("{outpath}", outpath = list(sim_map["outpath"].values()))
+    input: expand(OUTROOT + "{outpath}", outpath = list(sim_map["outpath"].values()))
 
 rule run_simulation:
     output: OUTROOT + "{outpath}"
