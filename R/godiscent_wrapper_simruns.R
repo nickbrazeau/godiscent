@@ -3,7 +3,7 @@
 ## Author: Nick Brazeau
 ## .................................................................................
 
-# Temporarily suppress warnings fto avoid the issue of strict snakemake bash mode
+# Temporarily suppress warnings to avoid the issue of strict snakemake bash mode
 defaultwarnings <- getOption("warn")
 options(warn = -1)
 
@@ -89,7 +89,7 @@ get_discentwrapper <- function(datpath) {
   #......................
   out <- dat %>%
     dplyr::mutate(discret = purrr::pmap(., discrun)) %>%
-    dplyr::select(-c("discret"))
+    dplyr::select(-c("discdat"))
   return(out)
 }
 
@@ -102,21 +102,17 @@ get_discentwrapper <- function(datpath) {
 #++++++++++++++++++++++++++++++++++++++++++
 option_list=list(
 
-  optparse::make_option(c("-i", "--datpath"),
+  optparse::make_option(c("-i", "--input"),
               type = "character", default = NULL,
               help = paste("File path for simulation data to consider"),
               metavar = "character"),
 
 
-  optparse::make_option(c("-o", "--outpath"),
+  optparse::make_option(c("-o", "--output"),
               type = "character", default = NULL,
               help = paste("Output fn to write discent result"),
-              metavar = "character"),
+              metavar = "character")
 
-  optparse::make_option(c("-d", "--outdir"),
-                        type = "character", default = NULL,
-                        help = paste("Output dir to write discent result"),
-                        metavar = "character")
 )
 
 opt_parser <- optparse::OptionParser(option_list = option_list)
@@ -125,10 +121,10 @@ opt <- optparse::parse_args(opt_parser)
 #++++++++++++++++++++++++++++++++++++++++++
 ### Run What you Brung ####
 #++++++++++++++++++++++++++++++++++++++++++
-out <- get_discentwrapper(datpath = opt$datpath)
+out <- get_discentwrapper(datpath = opt$input)
 #save out
 saveRDS(out,
-        file = paste0(opt$outdir, "/", opt$outpath))
+        file = paste0(opt$output))
 
 # turn warnings back to default
 options(warn = defaultwarnings)
