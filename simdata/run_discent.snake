@@ -35,7 +35,7 @@ rule all:
     input: expand("{outpath}", outpath = list(sim_map["outpath"].values()))
 
 rule run_simulation:
-    output: "{outpath}"
+    output: OUTROOT + "{outpath}"
     log: OUTROOT + "logs/{outpath}.log"
     params:
         rexec = RROOT + "R/godiscent_wrapper_simruns.R",
@@ -44,8 +44,7 @@ rule run_simulation:
     shell:
         r"""
         Rscript {params.rexec} \
-        --datpath {params.datpath} \
-        --outdir {params.outdir} \
-        --outpath {output} \
+        --input {params.datpath} \
+        --output {output} \
         2> {log}
         """
