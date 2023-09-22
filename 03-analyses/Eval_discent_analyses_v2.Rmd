@@ -1,0 +1,804 @@
+---
+title: "Evaluating DISCent Model"
+author: "Nicholas F. Brazeau"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    highlight: textmate
+    theme: lumen
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = T, 
+                      warning = F, 
+                      message = F, 
+                      eval = T, 
+                      results = 'hide',
+                      fig.align = 'center', 
+                      fig.width = 9, fig.height = 7)
+knitr::opts_knit$set(root.dir = here::here(""))
+```
+```{r}
+library(tidyverse)
+# remotes::install_github("nickbrazeau/discent", ref = "develop")
+library(discent)
+source("R/utils.R")
+```
+
+
+
+# Overview 
+**Model conceptualization**: 
+$$
+r_{ij} = \left(\frac{f_i + f_j}{2}\right) exp\left\{ \frac{-d_{ij}}{M} \right\}
+$$
+
+
+**Coding Decisions**: 
+1. M and F parameters have different learning rates (uncoupled) 
+2. M must be positive 
+2. M is normalized as part of input 
+3. ADAM gradient descent optimizer
+
+
+## Simulated Data 
+Using `polySimIBD` have five frameworks of simulation, which for each we ran 100 independent realizations (i.e. same migration, same Ne = different seed). For each framework, there are 25 demes laid out on a 5x5 square plane. Frameworks are as follows: 
+
+1. Isolation by Distance, Ne Constant (migrations are $\frac{1}{dist}$)    
+2. Lattice (can only move to neighbors, no diagonal moves; bounded by borders), Ne Constant   
+3. Torus (as above, but no longitudinal boundaries = cylinder), Ne Constant  
+4. IBDist, Ne: 5,25,50,100,250 across rows of 5x5 square matrix 
+4. Isolation by Distance with wrong distances (to analyze cost)
+\br
+**tlim here now 25 generations** 
+\br
+
+## Go DISCent Table for Starting Parameters and Learning Rates
+```
+fstartsvec <- c(0.1, 0.3, 0.5)
+mstartsvec <- c(10, 25, 50, 100, 250) # standardizing geodistance
+flearnsvec <- mlearnsvec <-  c(1e-2, 1e-3, 1e-4)
+search_grid <- expand.grid(fstartsvec, mstartsvec, flearnsvec, mlearnsvec)
+colnames(search_grid) <- c("fstart", "mstart", "f_learn", "m_learn")
+```
+
+
+## Questions
+There are three major questions regarding our evaluation of `DISCent`: 
+
+1. Model Accuracy: Can we recapture expected demographic/popgen patterns based on simulations
+2. Realism: Are outputted values of $f$ and $m$ realistic
+3. Model Selection: Can we use cost to distinguish the best model/data input
+
+
+
+```{r}
+#............................................................
+# Part 0: Read in pieces and results 
+#...........................................................
+# read in model framework
+migmatdf <- readRDS("simdata/00-simulation_setup/inputs/migmat_framework.RDS")
+coordgrid <- readRDS("simdata/00-simulation_setup/inputs/squarecoords.rds")
+# read in godisc results
+discfn <- list.files("simdata/disc_results", pattern = ".RDS", full.names = T)
+discrets <- lapply(discfn, function(x){
+  df <- readRDS(x)
+  nm <- stringr::str_replace(basename(x), ".RDS", "")
+  df <- df %>% 
+    dplyr::mutate(mod = nm,
+                  modbase = stringr::str_split_fixed(nm, "_", n = 3)[,1],
+                  modbase = forcats::as_factor(modbase),
+                  rep = stringr::str_split_fixed(nm, "_", n = 3)[,2],
+                  rep = forcats::as_factor(rep)) %>% 
+    dplyr::relocate(mod, modbase)
+  return(df)
+}) %>% 
+  dplyr::bind_rows()
+
+#......................
+# get cost, fs, and ms 
+#......................
+discrets <- discrets %>% 
+  dplyr::mutate(
+    final_cost = purrr::map_dbl(discret, extract_final_cost),
+    final_fs = purrr::map(discret, get_fs),
+    final_m = purrr::map_dbl(discret, get_ms)
+  )
+
+```
+
+
+## **Q1: Model Accuracy**
+
+### Spectrum of Costs across Models
+Remember, we are ignoring reps here which represent different realizations of the `polySimIBD` model with the same initial start frameworks (e.g. lattice, etc.). For the purposes of clarification, we are going to call simulation reps, realizations. 
+```{r}
+
+discrets %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = modbase, y = final_cost)) +
+  theme_linedraw() +
+  ggtitle("Costs over All Model Frameworks") + 
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+### Influence of Start Params 
+Remember, here we are  looking at all 135 start parameters results: 135*100*5 (135 start param combinations, 100 realizations, 5 different models). Remember, for each result there is 1 global M estimate and 25 Fi estimates (per deme). 
+
+```{r allstart}
+
+discrets %>% 
+  dplyr::mutate(
+    start_param_realization_fct = factor(start_param_realization, levels = 1:135, ordered = T)
+  ) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = start_param_realization_fct,
+                   y = final_cost)) + 
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("Start Params: 135 Unique Combinations from Above F and M starts") +
+  ylab("Final Cost") + 
+  ggtitle("Spectrum of Final Costs Across Different Start Parameter Runs") + 
+  theme(axis.text.x = element_text(angle = 90, size = 5,
+                                   vjust = 0.5, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
+
+
+
+
+discrets %>% 
+  dplyr::mutate(
+    start_param_realization_fct = factor(start_param_realization, levels = 1:135, ordered = T)
+  ) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = start_param_realization_fct,
+                   y = final_m)) + 
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("Start Params: 135 Unique Combinations from Above F and M starts") +
+  ylab("Final M") + 
+  ggtitle("Spectrum of Final M Results Across Different Start Parameter Runs") + 
+  theme(axis.text.x = element_text(angle = 90, size = 5,
+                                   vjust = 0.5, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
+
+
+
+
+discrets %>% 
+  dplyr::mutate(
+    start_param_realization_fct = factor(start_param_realization, levels = 1:135, ordered = T),
+    finalf10 = purrr::map_dbl(final_fs, function(x) x[10,2])
+  ) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = start_param_realization_fct,
+                   y = finalf10)) + 
+  theme_linedraw() + 
+  facet_grid(rows = vars(modbase), scales = "free") +
+  xlab("Start Params: 135 Unique Combinations from Above F and M starts") +
+  ylab("Final F10") + 
+  ggtitle("Spectrum of Final F10 Results Across Different Start Parameter Runs") + 
+  theme(axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+
+
+
+```
+**Results suggest that start parameters are important and that the user will have try several different combinations to converge on the lowest cost and best estimates**. 
+
+
+### Influence of `polySimIBD` Realizations/Stochasticity on Costs and Parameter Estimates  
+```{r polysimreps}
+
+discrets %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = rep, y = final_cost)) +
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() +
+  ggtitle("Costs over All Model Frameworks w/r/t Realizations") +
+  xlab("polySimIBD Realization") + 
+  theme(axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+```
+Although the above look like a `geom_point` plot, they are actually boxplots, which emphasizes that costs varied considerably w/r/t different `polySimIBD` realizations within the same framework (i.e. same migration matrix). 
+
+```{r}
+
+p1 <- discrets %>% 
+  dplyr::mutate(
+    rep_fct = factor(rep, levels = paste0("rep", 1:100), ordered = T)
+  ) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = rep_fct,
+                   y = final_m)) + 
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("polySimIBD Unique Realizations") +
+  ylab("Final M") + 
+  ggtitle("Spectrum of Final M Results Across Different polySimIBD Realizations \n Considering ALL Costs") + 
+  theme(axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+
+
+p2 <- discrets %>% 
+  dplyr::group_by(modbase, rep) %>% 
+  dplyr::arrange(final_cost) %>%
+  dplyr::slice_min(final_cost, n = 10) %>% 
+  dplyr::mutate(rep_fct = factor(rep, levels = paste0("rep", 1:100), ordered = T)) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = rep_fct,
+                   y = final_m)) + 
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("polySimIBD Unique Realizations") +
+  ylab("Final M") + 
+  ggtitle("Spectrum of Final M Results Across Different polySimIBD Realizations \n Considering 10 BEST Costs") + 
+  theme(axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+#......................
+# bring together
+#......................
+cowplot::plot_grid(p1, p2, nrow = 2)
+
+```
+**Although there is less variation in the Final Ms when it comes to those model runs w/ the start params that produced the lowest costs, still considerable variation in Final Ms across same `polySimIBD` simulation frameworks (i.e. same starting migration matrix)**.
+
+
+```{r polysimrepsparamM}
+
+p1 <- discrets %>% 
+  dplyr::mutate(
+    rep_fct = factor(rep, levels = paste0("rep", 1:100), ordered = T),
+    finalf10 = purrr::map_dbl(final_fs, function(x) x[10,2])
+  ) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = rep_fct,
+                   y = finalf10)) + 
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("polySimIBD Unique Realizations") +
+  ylab("Final F10") + 
+  labs(title = "Spectrum of Final F10 Results Across Different polySimIBD Realizations \n Considering ALL Costs",
+       caption = "F10 randomly selected among the 25 F (deme) options") + 
+  theme(axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+
+
+p2 <- discrets %>% 
+  dplyr::group_by(modbase, rep) %>% 
+  dplyr::arrange(final_cost) %>%
+  dplyr::slice_min(final_cost, n = 10) %>% 
+  dplyr::mutate(rep_fct = factor(rep, levels = paste0("rep", 1:100), ordered = T),
+                finalf10 = purrr::map_dbl(final_fs, function(x) x[10,2])) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = rep_fct,
+                   y = finalf10)) + 
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("polySimIBD Unique Realizations") +
+  ylab("Final F10") + 
+  labs(title = "Spectrum of Final F10 Results Across Different polySimIBD Realizations \n Considering 10 Best Costs",
+       caption = "F10 randomly selected among the 25 F (deme) options") + 
+  theme(axis.text.x = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+
+#......................
+# bring together
+#......................
+cowplot::plot_grid(p1, p2, nrow = 2)
+
+```
+**Interestingly, less variation in the Final F10 (randomly selected) when it comes to both ALL costs and BEST 10 costs - suggesting that F converges much faster than M and is not driving differences as much. This is particulalry notable given the considerable variation in Final F  across same `polySimIBD` simulation frameworks (i.e. same starting migration matrix)**.
+
+\n
+\n
+
+**Overall, these results suggest that `polySimIBD` introduces a fair amount of stochasticity across realizations (as expected), which the model seems to adapt to - will need to look at averages to see if expected demographic/popgen patterns are recapitulated**. 
+
+
+### Best Parameter Estimates by Realization
+Here we have subsetted to the DISC results that produced the lowest cost from the 135 start parameter estimates by model by realization. As a result, from the 135*100*5 overall results (start params * `polySimIBD` realizations * `polySimIBD` model frameworks [migration matrices]), we have subsetted to 1*100*5 results (i.e. lowest cost across start params.) best parameter estimates by model. We expect the "average" DISC results across the `polySimIBD` simulation frameworks to match our popgen/demograph expectations (i.e. lattice, torus): in other words, expect some consistency in Fs and Ms in these results.
+
+
+
+
+#### Consistency of Start Params
+Here, we will look at the variation by realization of which start paramater set produced the lowest cost with respect to `polySimIBD` model frameworks (i.e. migration matrices).
+```{r best1}
+discretsbest <- discrets %>% 
+  dplyr::group_by(modbase, rep) %>% 
+  dplyr::arrange(final_cost) %>%
+  dplyr::slice_min(final_cost, n = 1) %>% 
+  dplyr::ungroup(rep) # one bad IBD model has a duplicated final_cost 
+
+```
+```{r}
+discretsbest %>% 
+  dplyr::mutate(
+    start_param_realization_fct = factor(start_param_realization, levels = 1:135, ordered = T)
+  ) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = start_param_realization_fct,
+                   y = final_cost)) + 
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("Start Params: 135 Unique Combinations from Above F and M starts") +
+  ylab("Final Cost") + 
+  ggtitle("Spectrum of Start Parameters that Produced the Final BEST Costs Across Different Sim Frameworks") + 
+  theme(axis.text.x = element_text(angle = 90, size = 5,
+                                   vjust = 0.5, hjust = 1),
+        plot.title = element_text(hjust = 0.5))
+
+# manual 
+# what is set 45
+set45 <- unique(discretsbest$start_params[discretsbest$start_param_realization == 45])[[1]]
+set45 <- unique(unname(set45))
+
+```
+**Overall, it looks like paramater set 45 produced the best results but as the figure demonstrates, this was not universally true. Set 45 was: ** `r print(set45)`. 
+
+#### Evaluating Parameter Consistency 
+```{r best1plotsF}
+discretsbest %>% 
+  tidyr::unnest(cols = "final_fs") %>% 
+  dplyr::mutate(Deme = factor(Deme, levels = 1:25, ordered = T)) %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = Deme, y = Final_Fis), alpha = 0.5) +
+  theme_linedraw() +
+  facet_grid(rows = vars(modbase), scales = "free") +
+  scale_color_viridis_c() +
+  ggtitle("Across Realizations (best), Demes vs Final Fs") +
+  theme(axis.text.x = element_text(angle = 90),
+        plot.title = element_text(hjust = 0.5))
+```
+
+^ Interesting variation in the lattice model. 
+
+
+```{r best1plotsM}
+discretsbest %>% 
+  tidyr::unnest(cols = "final_m") %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = modbase, y = final_m), alpha = 0.5) +
+  theme_linedraw() +
+  ggtitle("Across Realizations (best), Final Ms") +
+  theme(axis.text.x = element_text(angle = 90),
+        plot.title = element_text(hjust = 0.5))
+```
+^ Interesting to see that the model as no idea what to do w/ the Bad IBD - that's promising, as the distance has a good bit of error in it. 
+
+
+
+#### Best Parameter Estimates Over Space
+
+```{r best1plotsSPACE}
+# bring together w/ spatial data
+coordgrid$deme <- as.character(coordgrid$deme )
+discretsum <- discretsbest %>% 
+  tidyr::unnest(cols = "final_fs") %>% 
+  dplyr::group_by(modbase, Deme) %>% 
+  dplyr::summarise(
+    n = n(),
+    meanFi = mean(Final_Fis),
+    varFi = var(Final_Fis),
+    minFi = min(Final_Fis),
+    maxFi = max(Final_Fis)
+  ) %>% 
+  dplyr::rename(deme = Deme) %>% 
+  dplyr::left_join(., coordgrid, by = "deme") 
+
+# need to split up b/c have different DISC scales
+plotmn <- function(discretsumitem, colnm, modnm) {
+  colnm <- enquo(colnm)
+  plotObj <- discretsumitem %>% 
+    ggplot() + 
+    geom_point(aes_string(x = "longnum", y = "latnum", 
+                          color = quo_name(colnm)), size = 5) + 
+    geom_text(aes(x = longnum, y = latnum, label = deme),
+              color = "#ffffff", size = 3) + 
+    scale_color_viridis_c(paste(quo_name(colnm), " DISCs")) +
+    ylim(c(-2, 24)) + xlim(c(-2, 24)) +
+    ggtitle(paste(modnm, " Model")) +
+    theme_linedraw() +
+    theme(axis.text = element_blank(),
+        plot.title = element_text(hjust = 0.5))
+  return(plotObj)
+}
+
+
+# split out and expand to match lvls needed to run
+discretsumbymod <- split(discretsum, discretsum$modbase)
+discretsumbymod <- append(discretsumbymod, discretsumbymod)
+discretsumbymod <- append(discretsumbymod, discretsumbymod)
+discretsumbymod <- discretsumbymod[order(names(discretsumbymod))]
+modnms <- names(discretsumbymod)
+lvls <- rep(c("meanFi", "varFi", "minFi", "maxFi"), 5)
+plotObjs <- mapply(plotmn, 
+                   discretsumitem = discretsumbymod,
+                   colnm = lvls, 
+                   modnm = modnms, SIMPLIFY = F)
+```
+
+#### Bad Isolation by Distance
+```{r}
+cowplot::plot_grid(plotlist = plotObjs[1:4]) 
+
+```
+
+#### Good Isolation by Distance
+```{r}
+cowplot::plot_grid(plotlist = plotObjs[5:8]) 
+
+```
+
+#### Lattice
+```{r}
+cowplot::plot_grid(plotlist = plotObjs[9:12]) 
+```
+
+#### NeVary
+```{r}
+cowplot::plot_grid(plotlist = plotObjs[13:16]) 
+```
+
+#### Torus
+```{r}
+cowplot::plot_grid(plotlist = plotObjs[17:20]) 
+```
+
+##### Final Ms
+Plot of Final M distribution. 
+```{r}
+# one call instead of 4
+discretsbest %>% 
+  tidyr::unnest(cols = "final_m") %>% 
+  ggplot() + 
+  geom_boxplot(aes(x = modbase, y = final_m)) +
+  theme_linedraw() +
+  ggtitle("Final Ms over Model Frameworks")
+
+
+discretsbest %>% 
+  tidyr::unnest(cols = "final_m") %>% 
+  ggplot() + 
+  geom_point(aes(x = final_m, y = final_cost, color = modbase)) +
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() +
+  ggtitle("Final Ms vs Cost over Model Frameworks") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+Versus M Summary Statistics 
+```{r}
+
+# table 
+discretsbest %>% 
+  tidyr::unnest(cols = "final_m") %>% 
+  dplyr::group_by(modbase) %>% 
+  dplyr::summarise(
+    n = n(),
+    meanM = mean(final_m),
+    varM = var(final_m),
+    minM = min(final_m),
+    maxM = max(final_m)) %>% 
+  dplyr::mutate_if(is.numeric, round, 2) %>% 
+  DT::datatable(.,
+                rownames = F,
+                extensions='Buttons',
+                options = list(
+                  searching = T,
+                  pageLength = 5,
+                  dom = 'Bfrtip',
+                  buttons = c('csv')))
+
+```
+
+
+## **Q2: Model Realism**
+Because we normalized our geo-distances, they are on a scale [0,1], which means that the higher the value of M, the closer the migration term, $e^{\frac{-d}{M}}$, goes to 1. As a result, the higher the migration rate, the more panmictic a population becomes, where distances from deme to deme become neglible. **Interesting, this is the behavior that is occuring with the _lattice_ and the _torus_ models, which is consistent with the migration matrix (can only move to neighbors [left,right - no diagonals]), as it smooths distance/makes it an essentially uniform migration rate and the resulting relatedness are affected more by potential moves (i.e. beginning and ends are bounded in lattice vs no bounds in torus).** In contrast, the IBDist and NeVary models are both parameterized with migration matrices that take into account distance (as seen below: migration rate is $\frac{1}{dist}$).
+
+```{r}
+
+migmatplot <- migmatdf %>% 
+  dplyr::mutate(longmigmat = purrr::map(migmat,
+                                        function(x){ broom::tidy(as.dist(x)) })) %>% 
+  dplyr::select(-c("migmat")) %>% 
+  tidyr::unnest(cols = longmigmat) %>% 
+  dplyr::rename(migrationrate = distance) %>% 
+  dplyr::mutate(item1 = factor(item1, levels = 1:25, ordered = T),
+                item2 = factor(item2, levels = 1:25, ordered = T)) %>% 
+  ggplot() + 
+  geom_tile(aes(x = item1, y = item2, 
+                fill = migrationrate)) +
+  facet_grid(rows = vars(modname), scales = "free") +
+  theme_minimal() +
+  xlab("Deme1") + ylab("Deme2") + 
+  scale_fill_viridis_c() +
+  labs(title = "Migration Rates by Deme",
+       caption = "NeVary uses IBDist MigMat but varies Ne (vs constant in IBDist)") +
+  theme(axis.text.x = element_text(angle = 90, size = 5),
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom")
+
+coordmap <- coordgrid %>% 
+  ggplot() + 
+  geom_point(aes(x = longnum, y = latnum),
+             shape = 21, fill = NA, color = "#000000",
+             size = 8) + 
+  geom_text(aes(x = longnum, y = latnum, label = deme)) + 
+  theme_minimal() + 
+  xlab("Longnum") + ylab("Latnum") + 
+  labs(title = "Deme Locations",
+       caption = "Migration matrix acts on deme w/ corresponding number(s)") +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  ylim(c(-2, 24)) + xlim(c(-2, 24)) 
+
+
+#......................
+# bring together
+#......................
+cowplot::plot_grid(migmatplot, coordmap, nrow = 1, rel_widths = c(0.7,0.3))
+
+```
+
+```{r}
+cowplot::plot_grid(plotlist = plotObjs[c(1,5,9,13,17)]) 
+```
+
+### Realism when M Matters
+The major questin then becomes, when M is lower, is there something fundamentally different about those `polySimIBD` realizations for the IBDist and Nevary runs. Here we will take the top and bottom ten Ms and compare the input data. 
+
+
+```{r}
+polySimIBDret <- readRDS("simdata/polysim_results/discdat_from_polySimIBD_maestro.RDS") %>% 
+  dplyr::mutate(rep = paste0("rep", rep)) %>% 
+  rename(modbase = modname)
+
+exploreMdat <- discretsbest %>% 
+  dplyr::filter(modbase %in% c("IsoByDist", "NeVary"))
+
+exploreMdattopM <- exploreMdat %>% 
+  dplyr::group_by(modbase) %>% 
+  dplyr::arrange(final_m) %>%
+  dplyr::slice_max(final_m, n = 10) 
+
+exploreMdatbotM <- exploreMdat %>% 
+  dplyr::group_by(modbase) %>% 
+  dplyr::arrange(final_m) %>%
+  dplyr::slice_min(final_m, n = 10) 
+#......................
+# bring together top 10 and  bottom 10 
+#......................
+exploreMdat <- dplyr::bind_rows(exploreMdattopM, exploreMdatbotM)
+
+#......................
+# bring in raw data 
+#......................
+exploreMdat <- dplyr::left_join(exploreMdat, polySimIBDret,
+                                by = c("modbase", "rep"))
+
+#......................
+# look at average IBD
+#......................
+exploreMdat <- exploreMdat %>% 
+  dplyr::mutate(
+     minIBD = purrr::map_dbl(discdat, function(x){min(x$gendist)}),
+      maxIBD = purrr::map_dbl(discdat, function(x){max(x$gendist)}),
+    avgIBD = purrr::map_dbl(discdat, function(x){mean(x$gendist)}),
+     varIBD = purrr::map_dbl(discdat, function(x){var(x$gendist)}),
+    sibs = purrr::map_dbl(discdat, function(x){sum(x$gendist >= 0.5)}),
+    IBDgeonorm = purrr::map(discdat, function(x){
+      normgeo <- (x$geodist - min(x$geodist))/(max(x$geodist) - min(x$geodist))
+      x$gendist * normgeo}),
+    meanIBDgeonorm = purrr::map_dbl(IBDgeonorm, mean),
+    sibGeo = purrr::map(discdat, function(x){
+      mingeo <- min(x$geodist)
+      maxgeo <- max(x$geodist)
+      mapply(function(gendist,geodist){
+        if(gendist >= 0.5) {
+          gendist * (geodist - mingeo)/(maxgeo - mingeo)
+        } else {
+          0
+        }
+      }, gendist = x$gendist, geodis = x$geodist)
+    }),
+    meansibGeo = purrr::map_dbl(sibGeo, mean)
+  )
+
+
+
+exploreMdat %>% 
+  ggplot() +
+  geom_point(aes(x = final_m, y = avgIBD)) +
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("Final M") + ylab("Avg IBD")
+
+exploreMdat %>% 
+  ggplot() +
+  geom_point(aes(x = final_m, y = varIBD)) +
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("Final M") + ylab("Var IBD")
+
+exploreMdat %>% 
+  ggplot() +
+  geom_point(aes(x = final_m, y = meanIBDgeonorm)) +
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("Final M") +
+  ylab("IBD Scaled by Normalized Geodist")
+
+exploreMdat %>% 
+  ggplot() +
+  geom_point(aes(x = final_m, y = sibs)) +
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("Final M") + ylab("Sib. N")
+
+
+
+exploreMdat %>% 
+  ggplot() +
+  geom_point(aes(x = final_m, y = meansibGeo)) +
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() + 
+  xlab("Final M") + ylab("Sib-Rate Scaled by Normalized Geodist")
+
+
+```
+**No obvious reason from IBD why M is lower in the bottom 10 cases versus the top 10 cases...**. Let's look to see if the costs were _that_ different for the other start param results. 
+
+```{r}
+mintreps <- exploreMdat %>% 
+  dplyr::ungroup() %>% 
+  dplyr::filter(final_m < 400) %>% 
+  dplyr::select(c("modbase", "rep")) %>% 
+  dplyr::filter(!duplicated(.))
+
+mintreps <- discrets %>% 
+  dplyr::inner_join(., mintreps, by = c("modbase", "rep")) %>% 
+  dplyr::group_by(mod) %>% 
+   dplyr::slice_min(final_cost, n = 10) 
+
+mintreps %>% 
+  ggplot() + 
+  geom_point(aes(x = final_m, y = final_cost,
+                 color = mod)) +
+  facet_grid(rows = vars(modbase), scales = "free") +
+  theme_linedraw() +
+  theme(legend.position = "none")
+
+
+```
+Costs don't seem to vary greatly for the lowest and highest M, even when the M value stays constant or shifts. **Let's look at the IBD patterns for the highest and lowest final Ms in the set**: 
+
+```{r}
+#.....................
+# make coord copies
+#......................
+c1 <- coordgrid %>% 
+  dplyr::mutate(deme1 = as.character(deme))
+c2 <- coordgrid %>% 
+  dplyr::mutate(deme2 = as.character(deme))
+
+#.....................
+# subset to LOW M
+#......................
+lowm <- polySimIBDret %>% 
+  dplyr::filter(modbase == "IsoByDist" & rep == "rep95")
+lowmdf <- lowm$discdat[[1]]
+
+# bring in coords
+lowmdfsp <- lowmdf %>% 
+  dplyr::left_join(., c1, by = "deme1") %>% 
+  dplyr::left_join(., c2, by = "deme2")
+
+# plot out
+p1 <- lowmdfsp %>% 
+  dplyr::filter(gendist > 0.25) %>% 
+  ggplot() + 
+  geom_point(data = coordgrid, 
+             aes(x = longnum, y = latnum),
+             color = "#000000") +
+  geom_segment(aes(
+    x = longnum.x, xend = longnum.y,
+    y = latnum.x, yend = latnum.y, 
+    color = gendist), alpha = 0.5) +
+  scale_color_viridis_c() + 
+  ggtitle("Lowest M for IsoByDist") + 
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom")
+
+#.....................
+# subset to HIGH M
+#......................
+highm <- polySimIBDret %>% 
+  dplyr::filter(modbase == "IsoByDist" & rep == "rep67")
+highmdf <- highm$discdat[[1]]
+
+# bring in coords
+highmdfsp <- highmdf %>% 
+  dplyr::left_join(., c1, by = "deme1") %>% 
+  dplyr::left_join(., c2, by = "deme2")
+
+# plot out
+p2 <- highmdfsp %>% 
+  dplyr::filter(gendist > 0.25) %>% 
+  ggplot() + 
+  geom_point(data = coordgrid, 
+             aes(x = longnum, y = latnum),
+             color = "#000000") +
+  geom_segment(aes(
+    x = longnum.x, xend = longnum.y,
+    y = latnum.x, yend = latnum.y, 
+    color = gendist), alpha = 0.5) +
+  scale_color_viridis_c() + 
+  ggtitle("Highest M for IsoByDist") + 
+  theme(plot.title = element_text(hjust = 0.5),
+        legend.position = "bottom")
+
+#......................
+# bring together
+#......................
+cowplot::plot_grid(p1, p2, nrow = 1)
+
+```
+**This shows that the higher "node" density of the IBD connections is likely driving the lower M result, which is exactly what we hope. It is interesting that there is some kind of inflection point in the ?saturation? or IBD that makes M more important. However, of all the above signals, this is the most clear that M is actually picking up an important pattern of IBD/inbreeding**. 
+
+
+
+## **Q3: Model Selection**
+Given that reps here match between bad-IBD and good-IBD, can do a paired cost difference. 
+```{r}
+discretsbest_badIBD <- discretsbest %>% 
+  dplyr::ungroup() %>% 
+  dplyr::filter(modbase == "badIsoByDist") 
+
+
+discretsbest_goodIBD <- discretsbest %>% 
+  dplyr::ungroup() %>% 
+  dplyr::filter(modbase == "IsoByDist") 
+
+comparebadgood <- dplyr::inner_join(discretsbest_badIBD, discretsbest_goodIBD, by = "rep") %>% 
+  dplyr::mutate(
+    costdiff = final_cost.x - final_cost.y
+  )
+
+
+comparebadgood %>% 
+  ggplot() + 
+  geom_boxplot(aes(y = costdiff)) +
+  theme_linedraw() + 
+  xlab("Cost Diff.") + 
+  ggtitle("Final Costs of Bad IsoByDist (wrong Distances) vs Correct Distance IsoByDist", subtitle = "Eq is $Bad - Good$, so negative numbers indicate cost identified good as better model (minimizing cost)") +
+  theme(axis.text.x = element_blank())
+
+
+
+comparebadgood %>% 
+  ggplot() + 
+  geom_point(aes(x = final_m.x, y = final_m.y, 
+                 color = costdiff)) +
+  theme_linedraw() + 
+  scale_color_viridis_c() + 
+  xlab("Final M Bad IsoByDist") + 
+  ylab("Final M IsoByDist") + 
+  ggtitle("Final Costs of Bad IsoByDist (wrong Distances) vs Correct Distance IsoByDist", subtitle = "Eq is $Bad - Good$, so negative numbers indicate cost identified good as better model (minimizing cost)") 
+
+
+```
+
