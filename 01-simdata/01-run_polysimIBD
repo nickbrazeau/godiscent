@@ -7,4 +7,4 @@
 #SBATCH --time=48:00:00
 #SBATCH --output=%j.log
 
-Rscript future_polySimIBD.R 2> polysim.log
+Rscript future_polySimIBD.R 2 > polysim.log

@@ -5,7 +5,8 @@
 ##
 ## Date: 17 November, 2022
 ##
-## Notes:
+## Notes: Making an ASSUMPTION in the migration matrices
+## that individuals stay home ~25% of the time (rate is 25% of max)
 ## .................................................................................
 library(tidyverse)
 
@@ -32,7 +33,7 @@ squarecoords <- squarecoords %>%
 
 # save out basic coords
 saveRDS(object = squarecoords,
-        "simdata/simulation_setup/inputs/squarecoords.rds")
+        "01-simdata/00-simulation_setup/inputs/squarecoords.rds")
 
 #......................
 # cartesian distance matrix
@@ -78,7 +79,7 @@ locatcomb <- locatcomb %>%
 # expect this to be lower tri + upper tri + diagonals
 goodegg:::assert_eq(nrow(locatcomb), choose(25,2)*2 + 25)
 # save out for downstream
-saveRDS(locatcomb, "simdata/simulation_setup/inputs/locatcombo.rds")
+saveRDS(locatcomb, "01-simdata/00-simulation_setup/inputs/locatcombo.rds")
 
 
 #......................
@@ -108,9 +109,13 @@ make_wide_dist_mat <- function(locatcomb) {
 # assume rates are 1/dist
 migmatdf$migmat <- NA
 migmatdf$migmat[migmatdf$modname == "IsoByDist"] <- list(1/make_wide_dist_mat(locatcomb))
-diag(migmatdf$migmat[migmatdf$modname == "IsoByDist"][[1]]) <- 1
-
-
+diag(migmatdf$migmat[migmatdf$modname == "IsoByDist"][[1]]) <- NA # temp remove INF 1/0 diag
+# making an assumption of staying at home 25% of the time versus max of the other migration rate moves...
+diag(migmatdf$migmat[migmatdf$modname == "IsoByDist"][[1]]) <- max(unlist(migmatdf$migmat[migmatdf$modname == "IsoByDist"]), na.rm = T) * 0.25
+# man viax
+image(migmatdf$migmat[[1]])
+plot(migmatdf$migmat[[1]][1,])
+hist(migmatdf$migmat[[1]])
 #............................................................
 ##### PART 2: Lattice Matrix #####
 #...........................................................
@@ -135,6 +140,8 @@ for (i in 1:nrow(latticemigmat)) {
 }
 # assume stay home 25% as much as move
 diag(latticemigmat) <- 0.25
+# viz
+image(latticemigmat)
 # store
 migmatdf$migmat[migmatdf$modname == "lattice"] <- list(latticemigmat)
 
@@ -148,12 +155,16 @@ wrparnd <- seq(nMov, nInds, by = nMov)
 wrparnd_back <- seq(1, nInds, by = nMov)
 # add in wrap around
 torusmigmat[cbind(wrparnd, wrparnd_back)] <- 1
-
+# viz
+image(torusmigmat)
 # store
 migmatdf$migmat[migmatdf$modname == "torus"] <- list(torusmigmat)
+
+
+
 
 #............................................................
 # save out
 #...........................................................
-saveRDS(migmatdf, "simdata/simulation_setup/inputs/migmat_framework.RDS")
+saveRDS(migmatdf, "01-simdata/00-simulation_setup/inputs/migmat_framework.RDS")
 

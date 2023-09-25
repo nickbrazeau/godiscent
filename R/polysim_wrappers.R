@@ -35,10 +35,11 @@ swfsim_2_discdat_wrapper <- function(pos, N, m,
 #
 get_swfsim_2_ibd <- function(swfsim, N, dwnsmplnum){
 
-    # get start and end ind counts
+    # get start and end ind counts for each deme (ie account for when deme size varies)
+    # remember, host index is counted as 1:sum(N)
     inds <- lapply(N, function(x){seq(1, x, by = 1)}) # list of inds by deme
     end <- cumsum(sapply(inds, max))
-    start <- end + 1
+    start <- end + 1 # next start is end + 1, except for last individual
     start <- c(1, start[1:(length(start)-1)])
     # downsample to "N" individuals per deme
     dwnsmpl <- mapply(function(x,y){sample(x:y, size = dwnsmplnum, replace = F)},

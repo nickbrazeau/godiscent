@@ -21,7 +21,7 @@ set.seed(48)
 # read in and make polysim IBD dataframe
 #...........................................................
 reps <- 100
-maestro <- readRDS("simdata/simulation_setup/simulation_maestro.RDS")
+maestro <- readRDS("01-simdata/00-simulation_setup/simulation_maestro.RDS")
 maestro <- lapply(1:reps, function(x){
   maestro <- maestro %>%
     dplyr::mutate(rep = x) %>%
@@ -29,7 +29,7 @@ maestro <- lapply(1:reps, function(x){
   return(maestro)}
 ) %>%
   dplyr::bind_rows()
-locatcomb <- readRDS("simdata/simulation_setup/inputs/locatcombo.rds")
+locatcomb <- readRDS("01-simdata/00-simulation_setup/inputs/locatcombo.rds")
 
 
 #............................................................
@@ -61,12 +61,14 @@ wrongIBD <- ret %>%
 
 # make wrong dist by randomly adding noise to real distances
 wrongdist <- realdist <- sort(unique(wrongIBD$discdat[[1]]$geodist)) # sort for perserving 0
-wrongdist <- wrongdist + rnorm(length(wrongdist), mean = mean(wrongdist), sd = sd(wrongdist))
+wrongdist <- wrongdist + rnorm(length(realdist), mean = mean(realdist), sd = sd(realdist))
 if(!all(wrongdist > 0)){
   warning("Random distances not all positive; converted")
   wrongdist <- abs(wrongdist)
 }
-wrongdist[1] <- 0
+
+# wrongdist[1] <- 0
+
 # combine for liftover
 distkey <- tibble::tibble(
   geodist = realdist,
@@ -98,5 +100,5 @@ ret <- ret %>%
 #............................................................
 # save out
 #...........................................................
-dir.create("simdata/polysim_results/", recursive = T)
-saveRDS(ret, "simdata/polysim_results/discdat_from_polySimIBD_maestro.RDS")
+dir.create("01-simdata/polysim_results/", recursive = T)
+saveRDS(ret, "01-simdata/polysim_results/discdat_from_polySimIBD_maestro.RDS")
