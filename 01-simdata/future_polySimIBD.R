@@ -88,9 +88,15 @@ wrongIBD <- wrongIBD %>%
   dplyr::mutate(modname = "badIsoByDist",
                 discdat = purrr::map(discdat, replace_wrong_dist, distkeylo = distkey))
 
-# # confirm
-# all( wrongIBD$discdat[[1]]$geodist == wrongIBD$discdat[[2]]$geodist )
-# all( which(wrongIBD$discdat[[1]]$geodist == 0) == which(rightdist == 0) )
+# confirm
+t1 <- all( wrongIBD$discdat[[1]]$geodist == wrongIBD$discdat[[2]]$geodist )
+t2 <- all( wrongIBD$discdat[[1]]$geodist > 0 )
+t3 <- all( realdist > 0 ) # no between
+
+if ( !all(t1,t2,t3)) {
+  stop("Checks for liftover corrected geodist to wrong geodist for IBDist not passed")
+}
+
 
 # bring together
 ret <- ret %>%
