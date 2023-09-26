@@ -13,6 +13,8 @@ library(future)
 library(future.batchtools)
 library(progressr)
 library(polySimIBD)
+library(here)
+setwd(here::here()) # respect proj
 source("R/polysim_wrappers.R")
 source("R/utils.R")
 set.seed(48)

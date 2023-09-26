@@ -12,6 +12,8 @@ library(furrr)
 library(future)
 library(future.batchtools)
 library(discent)
+library(here)
+setwd(here::here()) # respect proj
 source("R/utils.R")
 
 #............................................................
