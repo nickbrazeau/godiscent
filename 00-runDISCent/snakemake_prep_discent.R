@@ -25,7 +25,7 @@ discdat <- readRDS("simdata/polysim_results/discdat_from_polySimIBD_maestro.RDS"
 # make search grid of start params
 #...........................................................
 # look up tables
-fstartsvec <- c(0.1, 0.3, 0.5)
+fstartsvec <- c(0.1, 0.2, 0.3)
 mstartsvec <- c(10, 25, 50, 100, 250) # standardizing geodistance
 flearnsvec <- mlearnsvec <-  c(1e-2, 1e-3, 1e-4)
 search_grid <- expand.grid(fstartsvec, mstartsvec, flearnsvec, mlearnsvec)
