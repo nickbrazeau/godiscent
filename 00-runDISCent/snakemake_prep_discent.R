@@ -19,7 +19,21 @@ source("R/utils.R")
 #............................................................
 # read in discdat from polySimIBD to run DISCent on
 #...........................................................
-discdat <- readRDS("simdata/polysim_results/discdat_from_polySimIBD_maestro.RDS")
+simdat <- readRDS("simdata/simulation_maestro.RDS")
+# get file list of results
+fn <- data.frame(path = list.files("simdata/swf_results", full.names = T),
+                 randseedkey = as.numeric( stringr::str_extract(list.files("simdata/swf_results/"), "\\d+") ) )
+# drop readme
+fn <- fn[stringr::str_detect(fn$path, ".md", negate = T),]
+
+# bring together
+simdat <- dplyr::inner_join(simdat, fn)
+
+# trim it down
+discdat <- simdat %>%
+  dplyr::select(c("path", "randseedkey")) %>%
+  dplyr::mutate(discdat = purrr::map(path, readRDS)) %>%
+  dplyr::mutate(discdat = purrr::map(discdat, "ibddat"))
 
 #............................................................
 # make search grid of start params
@@ -70,19 +84,22 @@ fulldiscdat <- fulldiscdat %>%
 # save out discent plan for Snakemake
 #...........................................................
 SGpath <- "simdata/discent_SG_guides/"
+discretpath <- "discret/"
 dir.create(SGpath)
+dir.create(discretpath)
 # write out for each now
-writeSGrds <- function(modname, rep, data, SGpath){
-  outnm <- paste0(SGpath, modname, "_rep", rep, "_inputs.RDS")
+writeSGrds <- function(randseedkey, data, SGpath){
+  outnm <- paste0(SGpath, "_key", randseedkey, "_inputs.RDS")
   saveRDS(data, outnm)
   return(outnm)
 }
-# make output file
-getout <- function(modname, rep, data) {
-  return(paste0(modname, "_rep", rep, "_DISCret.RDS"))
+ # make output file
+getout <- function(randseedkey, data) {
+  return(paste0(discretpath, "key", randseedkey, "_DISCret.RDS"))
 }
 
 fulldiscdat <- fulldiscdat %>%
+  dplyr::select(-c("path")) %>%
   dplyr::mutate(datpath =
                   purrr::pmap_chr(., writeSGrds, SGpath = SGpath),
                 outpath = purrr::pmap_chr(., getout))
