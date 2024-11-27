@@ -17,8 +17,9 @@ godiscent.Rproj
 sanbox/
 nohup.out
 *.Rout
-.future/
+data/raw_data/rdhs.json
 # input  and result files too large for GH
+#TODO release data
+data/
 simdata/polysim_results/
-simdata/discent_SG_guides/
 simdata/disc_results/
