@@ -1,0 +1,32 @@
+---
+title: ""
+author: "Nicholas F. Brazeau"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    highlight: textmate
+    theme: lumen
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, eval = T, results = 'hide',
+                      fig.align = 'center', fig.width = 8, fig.height = 8)
+knitr::opts_knit$set(root.dir = paste0(here::here(""), "/analyses/"))
+
+```
+
+```{r, child = '00-Introduction.Rmd'}
+```
+
+```{r, child = '01-fomes_low_hang_fruit.Rmd'}
+```
+
+
+
+

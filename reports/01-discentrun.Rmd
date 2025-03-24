@@ -1,18 +1,38 @@
-## .................................................................................
-## Purpose: Analyze DISCent runs
-##
-## Author: Nick Brazeau
-##
-##
-## .................................................................................
+---
+title: ""
+author: "Nicholas F. Brazeau"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: 
+  html_document:
+    highlight: textmate
+    theme: lumen
+    toc: yes
+    toc_float: yes
+    toc_depth: 3
+    code_folding: hide
+editor_options: 
+  chunk_output_type: console
+---
 
-# import libraries
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, eval = T, results = 'hide',
+                      fig.align = 'center', fig.width = 8, fig.height = 8)
+knitr::opts_knit$set(root.dir = here::here())
+```
+```{r}
 library(tidyverse)
-library(cowplot)
 remotes::install_github("nickbrazeau/discent")
 library(discent)
+library(cowplot)
+library(viridis)
+library(stringr)
+library(DT)
 set.seed(48)
+```
 
+
+```{r}
 #++++++++++++++++++++++++++++++++++++++++++
 ### Part 0: Import Data and Setup     ####
 #++++++++++++++++++++++++++++++++++++++++++
@@ -23,21 +43,8 @@ simdat <- readRDS("data/sim_data/goDISC_simulated_gendata.RDS") %>%
 # location data from 01-polySimIBD_data/02-cartesian_empiric_liftover.R
 locatdat <- readRDS("data/sim_data/sim_params/locatcombo.rds")
 # discent runs full
-discdat <- readRDS("data/sim_data/goDISC_full-DISC_simulated_gendata.RDS")
-# bring together
-sim_disc_dat <- dplyr::left_join(simdat, discdat, by = "modname")
-
-# split out sections
-torus <- sim_disc_dat %>%
-  dplyr::filter(stringr::str_detect(modname, "torus-rep-*[0-9]"))
-bound <- sim_disc_dat %>%
-  dplyr::filter(stringr::str_detect(modname, "bound-rep-*[0-9]"))
-dexter <- sim_disc_dat %>%
-  dplyr::filter(stringr::str_detect(modname, "dexter-rep-*[0-9]"))
-torusNe <- sim_disc_dat %>%
-  dplyr::filter(stringr::str_detect(modname, "torus-NeVary-rep-*[0-9]"))
-boundNe <- sim_disc_dat %>%
-  dplyr::filter(stringr::str_detect(modname, "bound-NeVary-rep-*[0-9]"))
+discdat <- readRDS("data/sim_data/goDISC_full-DISC_simulated_gendata.RDS") %>% 
+  dplyr::rename(mod = cost)
 
 #............................................................
 # Helper Functions
@@ -53,7 +60,7 @@ plot_swf_sim <- function(locatdat, IBDcalc, mod, modname, threshold, alpha = 0.5
     dplyr::select(dplyr::contains("2")) %>%
     dplyr::filter(!duplicated(.))
   # bring together
-  simplotdat <- ibddat %>%
+  simplotdat <- IBDcalc %>%
     dplyr::left_join(., y = locatdat1, by = "deme1") %>%
     dplyr::left_join(., y = locatdat2, by = "deme2")
   #......................
@@ -129,29 +136,288 @@ plot_swf_sim <- function(locatdat, IBDcalc, mod, modname, threshold, alpha = 0.5
 #++++++++++++++++++++++++++++++++++++++++++
 ### Part 1: Visualize Results     ####
 #++++++++++++++++++++++++++++++++++++++++++
+sim_disc_dat <- dplyr::left_join(simdat, discdat, by = "modname")
+
 sim_disc_dat$viz <- purrr::pmap(sim_disc_dat[,c("IBDcalc", "mod", "modname")], plot_swf_sim,
                                 threshold = 0.1, alpha = 0.5, locatdat = locatdat)
 
 
-# # save out
-# sim_disc_dat %>%
-#   dplyr::select(c("modname", "viz")) %>%
-#   saveRDS(., file = "data/sim_data/goDISC_visualization-full-DISC_simulated_gendata.RDS")
+```
 
-#++++++++++++++++++++++++++++++++++++++++++
-### Part 2: Summary Statistics of DISC Results     ####
-#++++++++++++++++++++++++++++++++++++++++++
-finalMs <- unlist(purrr::map(sim_disc_dat$mod, "Final_m"))
-finalFs <- unlist(purrr::map(sim_disc_dat$mod, "Final_Fis"))
+```{r}
+# tidy up viz data
+torus <- sim_disc_dat %>% 
+  dplyr::filter(stringr::str_detect(modname, "torus-rep-*[0-9]"))
+bound <- sim_disc_dat %>% 
+  dplyr::filter(stringr::str_detect(modname, "bound-rep-*[0-9]"))
+dexter <- sim_disc_dat %>% 
+  dplyr::filter(stringr::str_detect(modname, "dexter-rep-*[0-9]"))
+torusNe <- sim_disc_dat %>% 
+  dplyr::filter(stringr::str_detect(modname, "torus-NeVary-rep-*[0-9]"))
+boundNe <- sim_disc_dat %>% 
+  dplyr::filter(stringr::str_detect(modname, "bound-NeVary-rep-*[0-9]"))
+```
 
-summary( finalMs )
-hist( finalMs )
-summary( finalFs )
-hist(finalFs)
+## Isotropic Homogenous with Periodic Boundaries {.tabset}
+
+### Rep 1
+```{r} 
+torus$viz[[1]]
+``` 
+
+### Rep 2
+```{r} 
+torus$viz[[2]]
+``` 
+
+### Rep 3
+```{r} 
+torus$viz[[3]]
+``` 
+
+### Rep 4
+```{r} 
+torus$viz[[4]]
+``` 
+
+### Rep 5
+```{r} 
+torus$viz[[5]]
+``` 
+
+### Rep 6
+```{r} 
+torus$viz[[6]]
+``` 
+
+### Rep 7
+```{r} 
+torus$viz[[7]]
+``` 
+
+### Rep 8
+```{r} 
+torus$viz[[8]]
+``` 
+
+### Rep 9
+```{r} 
+torus$viz[[9]]
+``` 
+
+### Rep 10
+```{r} 
+torus$viz[[10]]
+``` 
 
 
+## Isotropic Homogenous with Reflecting Boundaries {.tabset}
 
-torusfinalFs <- unlist(purrr::map(torus$mod, "Final_Fis"))
-dexterfinalFs <- unlist(purrr::map(dexter$mod, "Final_Fis"))
-summary(torusfinalFs)
-summary(dexterfinalFs)
+### Rep 1
+```{r} 
+bound$viz[[1]]
+``` 
+
+### Rep 2
+```{r} 
+bound$viz[[2]]
+``` 
+
+### Rep 3
+```{r} 
+bound$viz[[3]]
+``` 
+
+### Rep 4
+```{r} 
+bound$viz[[4]]
+``` 
+
+### Rep 5
+```{r} 
+bound$viz[[5]]
+``` 
+
+### Rep 6
+```{r} 
+bound$viz[[6]]
+``` 
+
+### Rep 7
+```{r} 
+bound$viz[[7]]
+``` 
+
+### Rep 8
+```{r} 
+bound$viz[[8]]
+``` 
+
+### Rep 9
+```{r} 
+bound$viz[[9]]
+``` 
+
+### Rep 10
+```{r} 
+bound$viz[[10]]
+``` 
+
+
+## Anisotropic (no left) Homogenous with Reflecting Boundaries {.tabset}
+
+### Rep 1
+```{r} 
+dexter$viz[[1]]
+``` 
+
+### Rep 2
+```{r} 
+dexter$viz[[2]]
+``` 
+
+### Rep 3
+```{r} 
+dexter$viz[[3]]
+``` 
+
+### Rep 4
+```{r} 
+dexter$viz[[4]]
+``` 
+
+### Rep 5
+```{r} 
+dexter$viz[[5]]
+``` 
+
+### Rep 6
+```{r} 
+dexter$viz[[6]]
+``` 
+
+### Rep 7
+```{r} 
+dexter$viz[[7]]
+``` 
+
+### Rep 8
+```{r} 
+dexter$viz[[8]]
+``` 
+
+### Rep 9
+```{r} 
+dexter$viz[[9]]
+``` 
+
+### Rep 10
+```{r} 
+dexter$viz[[10]]
+``` 
+
+
+## Isotropic Homogenous with Periodic Boundaries and Varying Ne {.tabset}
+
+### Rep 1
+```{r} 
+torusNe$viz[[1]]
+``` 
+
+### Rep 2
+```{r} 
+torusNe$viz[[2]]
+``` 
+
+### Rep 3
+```{r} 
+torusNe$viz[[3]]
+``` 
+
+### Rep 4
+```{r} 
+torusNe$viz[[4]]
+``` 
+
+### Rep 5
+```{r} 
+torusNe$viz[[5]]
+``` 
+
+### Rep 6
+```{r} 
+torusNe$viz[[6]]
+``` 
+
+### Rep 7
+```{r} 
+torusNe$viz[[7]]
+``` 
+
+### Rep 8
+```{r} 
+torusNe$viz[[8]]
+``` 
+
+### Rep 9
+```{r} 
+torusNe$viz[[9]]
+``` 
+
+### Rep 10
+```{r} 
+torusNe$viz[[10]]
+``` 
+
+
+## Isotropic Homogenous with Reflecting Boundaries and Varying Ne {.tabset}
+
+### Rep 1
+```{r} 
+boundNe$viz[[1]]
+``` 
+
+### Rep 2
+```{r} 
+boundNe$viz[[2]]
+``` 
+
+### Rep 3
+```{r} 
+boundNe$viz[[3]]
+``` 
+
+### Rep 4
+```{r} 
+boundNe$viz[[4]]
+``` 
+
+### Rep 5
+```{r} 
+boundNe$viz[[5]]
+``` 
+
+### Rep 6
+```{r} 
+boundNe$viz[[6]]
+``` 
+
+### Rep 7
+```{r} 
+boundNe$viz[[7]]
+``` 
+
+### Rep 8
+```{r} 
+boundNe$viz[[8]]
+``` 
+
+### Rep 9
+```{r} 
+boundNe$viz[[9]]
+``` 
+
+### Rep 10
+```{r} 
+boundNe$viz[[10]]
+``` 

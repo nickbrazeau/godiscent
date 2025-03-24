@@ -44,7 +44,7 @@ DISCdat <- DISChelperfunction(simdata = simdat, locationdata = locatdat)
 ### Part 1: Setup DISCent start params        ####
 #++++++++++++++++++++++++++++++++++++++++++
 # full spectrum of start parameters for DISCent include below. However, we will
-# focus on F, M, lambda, and learnin rate as the most critical parameters that
+# focus on F, M, lambda, and learning rate as the most critical parameters that
 # would affect convergence
 # f - FOCUS
 # m - FOCUS
@@ -62,7 +62,7 @@ DISCdat <- DISChelperfunction(simdata = simdat, locationdata = locatdat)
 fstart <- c(0.01, 0.05, 0.1, 0.25)
 mstart <- c(0.05, 0.5, 5, 50)
 learningrate <- 10^seq(-4, -1, by = 1)
-lambda <- 10^seq(-4, -1, by = 1)
+lambda <- 10^seq(-6, -3, by = 1)
 dynamic_start_params <- tidyr::expand_grid(fstart, mstart, learningrate, lambda)
 
 #......................
@@ -79,7 +79,7 @@ DISCdat <- tidyr::expand_grid(DISCdat, dynamic_start_params)
 # b2: 0.999
 # e: 1e-8
 # steps: 5e4
-discwrapper <- function(modname, data, fstart, mstart, learningrate, lambda){
+discwrapper_search <- function(modname, data, fstart, mstart, learningrate, lambda){
   # name start params
   setstartparam <- rep(fstart, 25)
   names(setstartparam) <- as.character(1:25)
@@ -95,16 +95,58 @@ discwrapper <- function(modname, data, fstart, mstart, learningrate, lambda){
     b2 = 0.999,
     e = 1e-8,
     steps = 1e4,
+    normalize_geodist = TRUE,
     report_progress = F,
     return_verbose = F
   )
   return(mod$cost[1e4])
 }
 
+# full model
+discwrapper_full <- function(modname, data, fstart, mstart, learningrate, lambda, cost){
+  # name start params
+  setstartparam <- rep(fstart, 25)
+  names(setstartparam) <- as.character(1:25)
+  setstartparam <- c(setstartparam, "m" = mstart)
+
+  # out
+   discent::disc(
+    discdat = data,
+    start_params = setstartparam,
+    lambda = lambda,
+    learningrate = learningrate,
+    b1 = 0.9,
+    b2 = 0.999,
+    e = 1e-8,
+    steps = 1e5,
+    thin = 1e2,
+    normalize_geodist = TRUE,
+    report_progress = F,
+    return_verbose = F
+  )
+}
+
+
 #++++++++++++++++++++++++++++++++++++++++++
 ### Part 2: Run DISCent from start params        ####
 #++++++++++++++++++++++++++++++++++++++++++
-
 DISCdat <- DISCdat %>%
-  purrr::pmap(., .f  = discwrapper, .progress = T)
+  dplyr::mutate(cost = purrr::pmap(., .f  = discwrapper_search, .progress = T))
 
+
+#++++++++++++++++++++++++++++++++++++++++++
+### Part 3: Identify Minimum DISCent start params ####
+#++++++++++++++++++++++++++++++++++++++++++
+DISCdatmin <- DISCdat %>%
+  dplyr::group_by(modname) %>%
+  dplyr::summarise( cost = min(cost)  )
+# bring in start parameters
+DISCdat_full <- dplyr::left_join(DISCdatmin, DISCdat, by = c("modname", "cost"))
+DISCdat_full <- DISCdat_full %>%
+  dplyr::mutate(mod = purrr::pmap(., .f  = discwrapper_full, .progress = T))
+
+#......................
+# save out
+#......................
+saveRDS(DISCdat, file = "data/sim_data/goDISC_search-DISC_simulated_gendata.RDS")
+saveRDS(DISCdat_full, file = "data/sim_data/goDISC_full-DISC_simulated_gendata.RDS")
