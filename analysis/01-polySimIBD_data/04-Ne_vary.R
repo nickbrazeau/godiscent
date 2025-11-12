@@ -26,7 +26,7 @@ migmatdf$NeVaryMult <- NA
 # get number of inds
 nInds <- nrow(migmatdf$migmat[[1]])
 # vary by e^x
-expmult <- exp(seq(0, 2, by = 0.5))
+expmult <- exp(seq(0, 1, by = 0.25))
 expmult <- rep(expmult, sqrt(nInds))
 migmatdf$NeVaryMult[1:3] <- list(rep(1, nInds))
 migmatdf$NeVaryMult[4:5] <- list(expmult)

@@ -18,7 +18,7 @@ set.seed(48)
 ###   Part 0: Magic Numbers: immutable throughout simulations     ####
 #++++++++++++++++++++++++++++++++++++++++++
 rep <- 1:10 # number of simulation realizations to perform
-tlim <- 10 # assume IBD generations for recent coalescent
+tlim <- 25 # assume IBD generations for recent coalescent
 # positions across the 14 chromosomes, assume ~100 loci across all chromosomes distributed equally
 wi <- rplasmodium::chromsizes_3d7()[1:14]/sum(rplasmodium::chromsizes_3d7()[1:14])
 locimarkers <- ceiling( wi * 1e3 )
@@ -39,7 +39,7 @@ rho <- 7.4e-7
 lambdaCOI <-  mean( readRDS("data/sim_data/sim_params/optim_lambda.RDS")[1:2] )
 mscale <- 0.25 # based on Verity et al DRC supp figure 6 as to what can be expected w/ N=10, COI=1.5
 # Ne/number of initial individuals per deme
-N <- 10
+N <- 20
 
 #++++++++++++++++++++++++++++++++++++++++++
 ### Part 1: Read in Data        ####
@@ -78,7 +78,7 @@ migmatdf$migr_mat <- purrr::map(migmatdf$migr_mat, function(x, intmigmat){
   x <- apply(x, 2, function(x){x * intmigmat})
   diag(x) <- (100 - intmigmat * wi)
   return(x)
-}, intmigmat = 10) # while general 1% rule migration causing a panmictic pop, our generation memory is only 10, so does not have same effect
+}, intmigmat = 5) # while general 1% rule migration causing a panmictic pop, our generation memory is only 10, so does not have same effect
 
 
 #++++++++++++++++++++++++++++++++++++++++++
@@ -139,10 +139,6 @@ migmatdf_IBD$IBDcalc <- purrr::pmap(migmatdf_IBD[, c("swfsim", "N")],
 
 
 
-#++++++++++++++++++++++++++++++++++++++++++
-### Part 4: Attach Geodistance Data for DISCent ####
-#++++++++++++++++++++++++++++++++++++++++++
-
 
 
 
@@ -154,53 +150,53 @@ saveRDS(migmatdf_IBD, file = "data/sim_data/goDISC_simulated_gendata.RDS")
 
 
 
-# #............................................................
-# # Explaratory Data Analysis
-# #...........................................................
-# locatdat <- readRDS("data/sim_data/sim_params/locatcombo.rds")
-# plot_swf_sim <- function(locatdat, ibddat, threshold, alpha = 0.3){
-#   #......................
-#   # tidy
-#   #......................
-#   locatdat1 <- locatdat %>%
-#     dplyr::select(dplyr::contains("1")) %>%
-#     dplyr::filter(!duplicated(.))
-#   locatdat2 <- locatdat %>%
-#     dplyr::select(dplyr::contains("2")) %>%
-#     dplyr::filter(!duplicated(.))
-#   #......................
-#   # bring together
-#   #......................
-#   plotdat <- ibddat %>%
-#     dplyr::left_join(., y = locatdat1, by = "deme1") %>%
-#     dplyr::left_join(., y = locatdat2, by = "deme2")
-#
-#   #......................
-#   # plot
-#   #......................
-#   plotdat %>%
-#     dplyr::filter(gendist > threshold) %>%
-#     ggplot() +
-#     geom_point(aes(x = deme1longnum, y = deme1latnum),
-#                color = "#d9d9d9", alpha = 0.5) +
-#     geom_segment(aes(x = deme1longnum, y = deme1latnum,
-#                      xend = deme2longnum, yend = deme2latnum,
-#                      color = gendist), alpha = alpha) +
-#     viridis::scale_color_viridis() +
-#     theme_minimal() +
-#     theme(panel.grid.major = element_blank(),
-#           panel.grid.minor = element_blank(),
-#           axis.text = element_blank(),
-#           axis.title = element_blank(),
-#           axis.ticks = element_blank())
-# }
-#
-# #......................
-# # viz
-# #......................
-# plot_swf_sim(locatdat = locatdat,
-#              ibddat = migmatdf_IBD$IBDcalc[[4]],
-#              threshold = 0.25)
-# sum(migmatdf_IBD$IBDcalc[[1]]$gendist > 0)
-# sum(migmatdf_IBD$IBDcalc[[1]]$gendist > 0)/length(migmatdf_IBD$IBDcalc[[1]]$gendist)
-# mean(migmatdf_IBD$IBDcalc[[1]]$gendist)
+#............................................................
+# Explaratory Data Analysis
+#...........................................................
+locatdat <- readRDS("data/sim_data/sim_params/locatcombo.rds")
+plot_swf_sim <- function(locatdat, ibddat, threshold, alpha = 0.3){
+  #......................
+  # tidy
+  #......................
+  locatdat1 <- locatdat %>%
+    dplyr::select(dplyr::contains("1")) %>%
+    dplyr::filter(!duplicated(.))
+  locatdat2 <- locatdat %>%
+    dplyr::select(dplyr::contains("2")) %>%
+    dplyr::filter(!duplicated(.))
+  #......................
+  # bring together
+  #......................
+  plotdat <- ibddat %>%
+    dplyr::left_join(., y = locatdat1, by = "deme1") %>%
+    dplyr::left_join(., y = locatdat2, by = "deme2")
+
+  #......................
+  # plot
+  #......................
+  plotdat %>%
+    dplyr::filter(gendist > threshold) %>%
+    ggplot() +
+    geom_point(aes(x = deme1longnum, y = deme1latnum),
+               color = "#d9d9d9", alpha = 0.5) +
+    geom_segment(aes(x = deme1longnum, y = deme1latnum,
+                     xend = deme2longnum, yend = deme2latnum,
+                     color = gendist), alpha = alpha) +
+    viridis::scale_color_viridis() +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank())
+}
+
+#......................
+# viz
+#......................
+plot_swf_sim(locatdat = locatdat,
+             ibddat = migmatdf_IBD$IBDcalc[[1]],
+             threshold = 0.25)
+sum(migmatdf_IBD$IBDcalc[[1]]$gendist > 0)
+sum(migmatdf_IBD$IBDcalc[[1]]$gendist > 0)/length(migmatdf_IBD$IBDcalc[[1]]$gendist)
+mean(migmatdf_IBD$IBDcalc[[1]]$gendist)

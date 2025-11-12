@@ -59,8 +59,8 @@ DISCdat <- DISChelperfunction(simdata = simdat, locationdata = locatdat)
 #......................
 # magic numbers
 #......................
-fstart <- c(0.01, 0.05, 0.1, 0.25)
-mstart <- c(0.05, 0.5, 5, 50)
+fstart <- c(1e-4, 1e-3, 0.01, 0.025, 0.05, 0.1)
+mstart <- c(0.5, 5, 10, 50, 100)
 learningrate <- 10^seq(-4, -1, by = 1)
 lambda <- 10^seq(-6, -3, by = 1)
 dynamic_start_params <- tidyr::expand_grid(fstart, mstart, learningrate, lambda)
@@ -78,32 +78,9 @@ DISCdat <- tidyr::expand_grid(DISCdat, dynamic_start_params)
 # b1: 0.9
 # b2: 0.999
 # e: 1e-8
-# steps: 5e4
-discwrapper_search <- function(modname, data, fstart, mstart, learningrate, lambda){
-  # name start params
-  setstartparam <- rep(fstart, 25)
-  names(setstartparam) <- as.character(1:25)
-  setstartparam <- c(setstartparam, "m" = mstart)
+# steps: steps 1e4 for search; steps 1e5 for full
 
-  # out
-  mod <- discent::disc(
-    discdat = data,
-    start_params = setstartparam,
-    lambda = lambda,
-    learningrate = learningrate,
-    b1 = 0.9,
-    b2 = 0.999,
-    e = 1e-8,
-    steps = 1e4,
-    normalize_geodist = TRUE,
-    report_progress = F,
-    return_verbose = F
-  )
-  return(mod$cost[1e4])
-}
-
-# full model
-discwrapper_full <- function(modname, data, fstart, mstart, learningrate, lambda, cost){
+discwrapper <- function(modname, data, fstart, mstart, learningrate, lambda, cost, steps){
   # name start params
   setstartparam <- rep(fstart, 25)
   names(setstartparam) <- as.character(1:25)
@@ -118,7 +95,7 @@ discwrapper_full <- function(modname, data, fstart, mstart, learningrate, lambda
     b1 = 0.9,
     b2 = 0.999,
     e = 1e-8,
-    steps = 1e5,
+    steps = steps,
     thin = 1e2,
     normalize_geodist = TRUE,
     report_progress = F,
@@ -131,7 +108,7 @@ discwrapper_full <- function(modname, data, fstart, mstart, learningrate, lambda
 ### Part 2: Run DISCent from start params        ####
 #++++++++++++++++++++++++++++++++++++++++++
 DISCdat <- DISCdat %>%
-  dplyr::mutate(cost = purrr::pmap(., .f  = discwrapper_search, .progress = T))
+  dplyr::mutate(mod = purrr::pmap(., .f  = discwrapper, .progress = T, steps = 1e4))
 
 
 #++++++++++++++++++++++++++++++++++++++++++
@@ -143,7 +120,7 @@ DISCdatmin <- DISCdat %>%
 # bring in start parameters
 DISCdat_full <- dplyr::left_join(DISCdatmin, DISCdat, by = c("modname", "cost"))
 DISCdat_full <- DISCdat_full %>%
-  dplyr::mutate(mod = purrr::pmap(., .f  = discwrapper_full, .progress = T))
+  dplyr::mutate(mod = purrr::pmap(., .f  = discwrapper, .progress = T, steps = 1e5))
 
 #......................
 # save out

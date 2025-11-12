@@ -192,17 +192,17 @@ plotObjs <- lapply(migmatdf$migmat, plot_migmat,
 # tidy up
 plotObjs[[1]] <- plotObjs[[1]] +
   ggtitle("Isotropic Homogenous with Periodic Boundaries") +
-  theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, face = "bold", size = 12)) +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, face = "bold", size = 18)) +
   theme(plot.margin = unit(c(0.8, 0.6, 0.4, 0.8), "cm"))
 
 plotObjs[[2]] <- plotObjs[[2]] +
-  ggtitle("Isotropic Homogenous with \n Reflecting Boundaries") +
-  theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, face = "bold", size = 12)) +
+  ggtitle("Isotropic Homogenous with Reflecting Boundaries") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, face = "bold", size = 18)) +
   theme(plot.margin = unit(c(0.8, 0.6, 0.4, 0.8), "cm"))
 
 plotObjs[[3]] <- plotObjs[[3]] +
-  ggtitle("Anisotropic (no left) Homogenous \n with Reflecting Boundaries") +
-  theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, face = "bold", size = 12)) +
+  ggtitle("Anisotropic (no left) Homogenous with Reflecting Boundaries") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, face = "bold", size = 18)) +
   theme(plot.margin = unit(c(0.8, 0.6, 0.4, 0.8), "cm"))
 
 # out
