@@ -18,8 +18,9 @@ sanbox/
 nohup.out
 *.Rout
 data/raw_data/rdhs.json
+.claude/
 # input  and result files too large for GH
 #TODO release data
-data/
-simdata/polysim_results/
-simdata/disc_results/
+data/raw_data/
+data/derived_data/
+data/sim_data/

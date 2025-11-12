@@ -1,0 +1,374 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, eval = T, results = 'hide',
+                      fig.align = 'center', fig.width = 8, fig.height = 8)
+knitr::opts_knit$set(root.dir = here::here())
+```
+```{r}
+library(tidyverse)
+library(ggridges)
+library(viridis)
+library(DT)
+```
+```{r}
+#++++++++++++++++++++++++++++++++++++++++++
+### Part 0: Import Data and Setup     ####
+#++++++++++++++++++++++++++++++++++++++++++
+# sim data from 01-polySimIBD_data/05-run_sims.R
+simdat <- readRDS("data/sim_data/goDISC_simulated_gendata.RDS") %>%
+  dplyr::mutate(modname = paste(modnameNe, "rep", rep, sep = "-")) %>%
+  dplyr::select(c("modname", "IBDcalc"))
+# location data from 01-polySimIBD_data/02-cartesian_empiric_liftover.R
+locatdat <- readRDS("data/sim_data/sim_params/locatcombo.rds")
+# discent runs search-grid
+search_discdat <- readRDS("data/sim_data/goDISC_search-DISC_simulated_gendata.RDS") %>% 
+  dplyr::mutate( overallmodname = stringr::str_extract(string = modname, pattern = "^(.*?)(?=-rep)") )
+# discent runs full
+discdat <- readRDS("data/sim_data/goDISC_full-DISC_simulated_gendata.RDS")
+# bring together
+sim_disc_dat <- dplyr::left_join(simdat, discdat, by = "modname")
+
+```
+
+
+## DISC Results: Overview of Search Parameters and Cost
+
+### Parameter Search
+Given concerns for a non-convex loss surface, we performed a grid search over the below starting parameter values. Searches were performed for 10,000 steps. 
+
+| Parameter               | Values Tested                       | Notes                                      |
+|-------------------------|-------------------------------------|--------------------------------------------|
+| Inbreeding Coefficient (f) | 0.01, 0.05, 0.1, 0.25, 0.33          | Same start value applied across all 25 demes       |
+| Migration Rate (M)         | 0.5, 5, 10, 50, 100                 | -      |
+| Learning Rate (α)          | 1e-4, 1e-3, 1e-2, 1e-1              | ADAM optimizer step size                    |
+| Regularization (λ)         | 1e-6, 1e-5, 1e-4, 1e-3              | L2 penalty on migration rate                |
+
+- We used fixed ADAM hyperparameters (default)
+
+
+### Cost Summary
+```{r}
+search_discdat %>% 
+  dplyr::group_by(overallmodname) %>% 
+  dplyr::summarise(
+    mincost = min(cost),
+    firstqcost = quantile(cost, prob = 0.25),
+    mediancost = quantile(cost, prob = 0.5),
+    meancost = mean(cost),
+    firstqcost = quantile(cost, prob = 0.75),
+    sdcost = sd(cost),
+    maxcost = max(cost) ) %>% 
+  mutate(across(where(is.numeric), ~ round(., digits = 0))) %>% 
+  DT::datatable(.,
+                rownames = F,
+                extensions='Buttons',
+                options = list(
+                  searching = T,
+                  pageLength = 10,
+                  dom = 'Bfrtip',
+                  autoWidth = TRUE,
+                  buttons = c('csv')))
+```
+
+### Visualization of **Migration-Start & F-Start** versus Cost
+```{r}
+search_discdat %>% 
+  dplyr::mutate(fm = paste(paste0("m: ", mstart), paste0("f: ", fstart), sep = "; ")) %>% 
+  ggplot() + 
+  ggridges::geom_density_ridges(aes(x = cost, y = factor(fm), fill = overallmodname), color = NA, alpha = 0.25, scale = 0.8) +
+  labs(x = "Cost", y = "F-M Start") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  ggtitle(label = "Overall Cost by Migration Surface for F & M Start Params")
+
+
+search_discdat %>% 
+  dplyr::mutate(fm = paste(paste0("m: ", mstart), paste0("f: ", fstart), sep = "; ")) %>%
+  dplyr::filter(cost < 30000) %>% 
+  ggplot() + 
+  ggridges::geom_density_ridges(aes(x = cost, y = factor(fm), fill = overallmodname), color = NA, alpha = 0.25, scale = 0.8) +
+  labs(x = "Cost", y = "F-M Start") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90)) +
+  ggtitle(label = "Overall Cost by Migration Surface for F & M Start Params",
+          subtitle = "Right-Truncuated for Outliers")
+
+
+```
+
+### Visualization of **Learning Rate** versus Cost
+```{r}
+search_discdat %>% 
+  ggplot() + 
+  ggridges::geom_density_ridges(aes(x = cost, y = factor(learningrate), fill = overallmodname), color = NA, alpha = 0.25, scale = 0.8) +
+  labs(x = "Cost", y = "Learning Rate Start") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  ggtitle(label = "Overall Cost by Migration Surface for Learning Rate")
+
+
+search_discdat %>% 
+  dplyr::filter(cost < 1e5) %>% 
+  ggplot() + 
+  ggridges::geom_density_ridges(aes(x = cost, y = factor(learningrate), fill = overallmodname), color = NA, alpha = 0.25, scale = 0.8) +
+  labs(x = "Cost", y = "Learning Rate Start") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  ggtitle(label = "Overall Cost by Migration Surface for Learning Rate",
+          subtitle = "Right-Truncuated for Outliers")
+
+
+```
+
+
+### Visualization of **Lambda** versus Cost
+```{r}
+search_discdat %>% 
+  ggplot() + 
+  ggridges::geom_density_ridges(aes(x = cost, y = factor(lambda), fill = overallmodname), color = NA, alpha = 0.25, scale = 0.8) +
+  labs(x = "Cost", y = "Lambda Start") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  ggtitle(label = "Overall Cost by Migration Surface for Lambda")
+
+
+search_discdat %>% 
+  dplyr::filter(cost < 25000) %>% 
+  ggplot() + 
+  ggridges::geom_density_ridges(aes(x = cost, y = factor(lambda), fill = overallmodname), color = NA, alpha = 0.25, scale = 0.8) +
+  labs(x = "Cost", y = "Lambda Start") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90)) + 
+  ggtitle(label = "Overall Cost by Migration Surface for Lambda",
+          subtitle = "Right-Truncuated for Outliers")
+
+
+```
+
+### Summary of Cost versus **Starting Parameters**
+```{r}
+# data
+d1 <- search_discdat %>% 
+  dplyr::mutate(llr = paste(paste0("LR: ", learningrate), paste0("L: ", lambda)), sep = "; ",
+                fm = paste(paste0("m: ", mstart), paste0("f: ", fstart), sep = "; "),
+                llrfm = paste(llr, fm, sep = "; ")) 
+# plot
+d1 %>% 
+  ggplot() + 
+  ggridges::geom_density_ridges(aes(x = cost, y = factor(llrfm), fill = overallmodname), color = NA, alpha = 0.25, scale = 0.8) +
+  labs(x = "Cost", y = "Lambda; Learning Rate; F; M Start") +
+  theme(
+    panel.background = element_blank(),       # remove gray bg
+    plot.background = element_blank(),        # remove outer bg
+    panel.grid.major = element_blank(),       # remove major gridlines
+    panel.grid.minor = element_blank(),       # remove minor gridlines
+    axis.line = element_line(color = "black"), # keep axis lines
+    axis.text.x = element_text(angle = 90),
+    axis.text.y = element_text(size = 1)) 
+
+
+
+
+d1 %>% 
+  dplyr::group_by(llrfm) %>% 
+  dplyr::summarise(
+    mincost = min(cost),
+    firstqcost = quantile(cost, prob = 0.25),
+    mediancost = quantile(cost, prob = 0.5),
+    meancost = mean(cost),
+    firstqcost = quantile(cost, prob = 0.75),
+    sdcost = sd(cost),
+    maxcost = max(cost) ) %>% 
+  mutate(across(where(is.numeric), ~ round(., digits = 0))) %>% 
+  DT::datatable(.,
+                rownames = F,
+                extensions='Buttons',
+                options = list(
+                  searching = T,
+                  pageLength = 10,
+                  dom = 'Bfrtip',
+                  autoWidth = TRUE,
+                  buttons = c('csv')))
+
+
+```
+
+
+### Summary of Cost versus **Starting Parameters** and **Model**
+```{r}
+# data
+d1 <- search_discdat %>% 
+  dplyr::mutate(llr = paste(paste0("LR: ", learningrate), paste0("L: ", lambda)), sep = "; ",
+                fm = paste(paste0("m: ", mstart), paste0("f: ", fstart), sep = "; "),
+                llrfm = paste(llr, fm, sep = "; "),
+                modllrfm = paste(overallmodname, llrfm, sep = "; ")) 
+
+
+d1 %>% 
+  dplyr::group_by(modllrfm) %>% 
+  dplyr::summarise(
+    mincost = min(cost),
+    firstqcost = quantile(cost, prob = 0.25),
+    mediancost = quantile(cost, prob = 0.5),
+    meancost = mean(cost),
+    firstqcost = quantile(cost, prob = 0.75),
+    sdcost = sd(cost),
+    maxcost = max(cost) ) %>% 
+  mutate(across(where(is.numeric), ~ round(., digits = 0))) %>% 
+  DT::datatable(.,
+                rownames = F,
+                extensions='Buttons',
+                options = list(
+                  searching = T,
+                  pageLength = 10,
+                  dom = 'Bfrtip',
+                  autoWidth = TRUE,
+                  buttons = c('csv')))
+
+
+```
+
+
+### Summary of Cost versus **Starting Parameters** and **Model** and **Rep**
+```{r}
+
+# random rep 
+search_discdat %>% 
+  dplyr::mutate(llr = paste(paste0("LR: ", learningrate), paste0("L: ", lambda), sep = ";") ,
+                fm = paste(paste0("m: ", mstart), paste0("f: ", fstart), sep = "; "),
+                llrfm = paste(llr, fm, sep = "; ")) %>% 
+  dplyr::filter(modname == "bound-rep-10") %>% 
+  ggplot() + 
+  geom_point(aes(x = fm, y = llr, color = cost)) +
+  scale_color_viridis_c() +
+  theme(
+    panel.background = element_blank(),       # remove gray bg
+    plot.background = element_blank(),        # remove outer bg
+    panel.grid.major = element_blank(),       # remove major gridlines
+    panel.grid.minor = element_blank(),       # remove minor gridlines
+    axis.line = element_line(color = "black"), # keep axis lines
+    axis.text.x = element_text(angle = 90)) +
+  ggtitle("Random Selection of Model: Bound, Rep 10")
+
+
+
+
+# plot
+search_discdat %>% 
+  dplyr::mutate(llr = paste(paste0("LR: ", learningrate), paste0("L: ", lambda), sep = ";") ,
+                fm = paste(paste0("m: ", mstart), paste0("f: ", fstart), sep = "; "),
+                llrfm = paste(llr, fm, sep = "; ")) %>% 
+  dplyr::filter(modname == "bound-rep-6") %>% 
+  ggplot() + 
+  geom_point(aes(x = fm, y = llr, color = cost)) +
+  scale_color_viridis_c() +
+  theme(
+    panel.background = element_blank(),       # remove gray bg
+    plot.background = element_blank(),        # remove outer bg
+    panel.grid.major = element_blank(),       # remove major gridlines
+    panel.grid.minor = element_blank(),       # remove minor gridlines
+    axis.line = element_line(color = "black"), # keep axis lines
+    axis.text.x = element_text(angle = 90)) +
+  ggtitle("Random Selection of Model: Bound, Rep 6")
+
+
+
+# random rep 
+search_discdat %>% 
+  dplyr::mutate(llr = paste(paste0("LR: ", learningrate), paste0("L: ", lambda), sep = ";") ,
+                fm = paste(paste0("m: ", mstart), paste0("f: ", fstart), sep = "; "),
+                llrfm = paste(llr, fm, sep = "; ")) %>% 
+  dplyr::filter(modname == "torus-rep-10") %>% 
+  ggplot() + 
+  geom_point(aes(x = fm, y = llr, color = cost)) +
+  scale_color_viridis_c() +
+  theme(
+    panel.background = element_blank(),       # remove gray bg
+    plot.background = element_blank(),        # remove outer bg
+    panel.grid.major = element_blank(),       # remove major gridlines
+    panel.grid.minor = element_blank(),       # remove minor gridlines
+    axis.line = element_line(color = "black"), # keep axis lines
+    axis.text.x = element_text(angle = 90)) +
+  ggtitle("Random Selection of Model: Torus, Rep 10")
+
+
+
+
+# plot
+search_discdat %>% 
+  dplyr::mutate(llr = paste(paste0("LR: ", learningrate), paste0("L: ", lambda), sep = ";") ,
+                fm = paste(paste0("m: ", mstart), paste0("f: ", fstart), sep = "; "),
+                llrfm = paste(llr, fm, sep = "; ")) %>% 
+  dplyr::filter(modname == "torus-rep-6") %>% 
+  ggplot() + 
+  geom_point(aes(x = fm, y = llr, color = cost)) +
+  scale_color_viridis_c() +
+  theme(
+    panel.background = element_blank(),       # remove gray bg
+    plot.background = element_blank(),        # remove outer bg
+    panel.grid.major = element_blank(),       # remove major gridlines
+    panel.grid.minor = element_blank(),       # remove minor gridlines
+    axis.line = element_line(color = "black"), # keep axis lines
+    axis.text.x = element_text(angle = 90)) +
+  ggtitle("Random Selection of Model: Torus, Rep 6")
+
+
+
+
+
+```
+
+
+
+### Summary of Cost versus **Final Fs** and **Final Ms**
+```{r}
+
+# random rep 
+search_discdat %>% 
+  dplyr::filter(modname == "bound-rep-10") %>% 
+  dplyr::mutate(meanFi = purrr::map_dbl(mod, function(x){mean(x$Final_Fis)}),
+                finalm = purrr::map_dbl(mod, function(x){x$Final_m})) %>% 
+  ggplot() + 
+  geom_point(aes(x = meanFi, y = finalm, color = cost)) +
+  scale_color_viridis_c() +
+  theme(
+    panel.background = element_blank(),       # remove gray bg
+    plot.background = element_blank(),        # remove outer bg
+    panel.grid.major = element_blank(),       # remove major gridlines
+    panel.grid.minor = element_blank(),       # remove minor gridlines
+    axis.line = element_line(color = "black"), # keep axis lines
+    axis.text.x = element_text(angle = 90)) +
+  ggtitle("Random Selection of Model: Bound, Rep 10")
+
+
+
+
+# plot
+search_discdat %>% 
+  dplyr::filter(modname == "bound-rep-6") %>% 
+  dplyr::mutate(meanFi = purrr::map_dbl(mod, function(x){mean(x$Final_Fis)}),
+                finalm = purrr::map_dbl(mod, function(x){x$Final_m})) %>% 
+  ggplot() + 
+  geom_point(aes(x = meanFi, y = finalm, color = cost)) +
+  scale_color_viridis_c() +
+  theme(
+    panel.background = element_blank(),       # remove gray bg
+    plot.background = element_blank(),        # remove outer bg
+    panel.grid.major = element_blank(),       # remove major gridlines
+    panel.grid.minor = element_blank(),       # remove minor gridlines
+    axis.line = element_line(color = "black"), # keep axis lines
+    axis.text.x = element_text(angle = 90)) +
+  ggtitle("Random Selection of Model: Bound, Rep 6")
+
+
+
+
+
+```
+

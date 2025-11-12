@@ -1,0 +1,49 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+## Appendix: Code Implementation
+
+The DISC framework is implemented in two layers: an R interface responsible for preprocessing and validation, and a C++ backend responsible for high-performance numerical optimization.
+
+### R Top Layer
+
+The R wrapper function `disc()`:
+- Validates input format (column names, absence of missing values)
+- Applies logit transformation to genetic distances and starting inbreeding coefficients
+- Normalizes geographic distances (if selected)
+- Reshapes data into 3D and 2D matrices for C++ compatibility
+- Specifies and bundles parameters and data into a list passed to C++
+- Post-processes C++ output to apply inverse transformations and return cleaned results
+
+The R code additionally performs data expansion using `expand_pairwise()` and ensures deme labeling consistency and uniqueness of pairwise distances.
+
+```{r, eval=FALSE}
+# See external R script or appendix for full code of `disc()`
+# It prepares and validates input, constructs data arrays, and
+# handles conversion between raw distances and parameter scale.
+```
+
+### C++ Backend
+
+The `vanilla_deme_inbreeding_coef_cpp` function (in C++) is built around a `Particle` class that encapsulates all relevant data structures, parameters, and gradient descent logic. It performs the following key functions:
+
+- **Initialization**: Pre-allocates storage for migration and inbreeding coefficient trajectories, gradients, and Adam optimization moments.
+- **Cost Calculation**: Computes the loss function using upper-triangle pairwise comparisons, incorporating an L2 regularization term on the migration parameter $M$.
+- **Gradient Calculation**:
+  - For each inbreeding coefficient $f_i$, uses partial derivatives to calculate the gradient across all demes.
+  - For $M$, uses the full derivative including the regularization penalty.
+- **ADAM Update Rule**:
+  - Applies moment updates ($m_t$, $v_t$) and bias correction.
+  - Enforces parameter bounds on $M$ after each update.
+- **Tracking**: Stores all intermediate values for post-hoc inspection and debugging, including:
+  - `m_run`, `fi_run`: migration and inbreeding coefficient trajectories
+  - `m_gradtraj`, `fi_gradtraj`: gradients across iterations
+  - `m1t_`, `v2t_`: moment vectors for ADAM optimization
+
+This structure ensures efficient execution and clear extensibility for future methods like PSO or simulated annealing given the class-based structure.
+

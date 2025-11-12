@@ -1,0 +1,36 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, eval = T, results = 'hide',
+                      fig.align = 'center', fig.width = 8, fig.height = 8)
+knitr::opts_knit$set(root.dir = here::here())
+```
+```{r}
+library(tidyverse)
+library(ggridges)
+library(viridis)
+library(DT)
+```
+
+## Time Complexity 
+
+```{r}
+#++++++++++++++++++++++++++++++++++++++++++
+### Part 0: Import Data and Setup     ####
+#++++++++++++++++++++++++++++++++++++++++++
+disc_complex_lite <- readRDS("data/sim_data/goDISC_lite-complexity_analysis.RDS")
+
+#++++++++++++++++++++++++++++++++++++++++++
+### Part 1: Plot     ####
+#++++++++++++++++++++++++++++++++++++++++++
+disc_complex_lite %>% 
+  ggplot() + 
+  geom_point(aes(x = steps, y = timedur, color = factor(ind_n), size = factor(demesize)))
+```
+
+All simulations were performed sequentially on a 14-inch MacBook Pro (2021) equipped with an Apple M1 Pro chip and 16 GB of unified memory, running macOS 15.3.2 (build 24D81).

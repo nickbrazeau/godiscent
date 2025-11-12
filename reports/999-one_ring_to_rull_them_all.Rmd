@@ -17,15 +17,28 @@ editor_options:
 ```{r, include=FALSE}
 knitr::opts_chunk$set(echo = T, warning = F, message = F, eval = T, results = 'hide',
                       fig.align = 'center', fig.width = 8, fig.height = 8)
-knitr::opts_knit$set(root.dir = paste0(here::here(""), "/analyses/"))
+knitr::opts_knit$set(root.dir = paste0(here::here(""), "/reports/"))
 
 ```
 
-```{r, child = '00-Introduction.Rmd'}
+```{r, child = '00-introduction.Rmd'}
 ```
 
-```{r, child = '01-fomes_low_hang_fruit.Rmd'}
+```{r, child = '01-discent_search_runs.Rmd'}
 ```
+
+```{r, child = '02-discent_full_runs.Rmd'}
+```
+
+```{r, child = '03-timecomplexity.Rmd'}
+```
+
+```{r, child = '02-conclusions_nextsteps.Rmd'}
+```
+
+```{r, child = '09-appendix_code_implementation.Rmd'}
+```
+
 
 
 

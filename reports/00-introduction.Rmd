@@ -1,0 +1,107 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+The objective of this project was to identify a statistic that leveraged the relationship between identity by descent (IBDe) and isolation by distance (IBDi) to capture patterns of inbreeding within a structured population. This custom statistic is termed the **Deme Inbreeding Spatial Coefficient (DISC)**.
+
+## Mathematical Framework
+
+We assumed that there were $K \in \mathbb{Z}_{\geq 0}$ total demes and $N \in \mathbb{Z}_{\geq 0}$ total samples, such that $N \geq K$. Let $i$ and $j$ be indices for demes, where $i \in j \in 1:K$. Consistent with Malécot, we assumed that each deme had a specific coefficient of inbreeding, $f$. The coefficient of relatedness between two given demes, $r_{i,j}$, was modeled as the average inbreeding between the demes conditional on the geographic distance, $d_{ij}$, and a global migration rate, $M$. The relatedness vector $\mathbf{r}$, of length $\binom{K}{2}$, was defined as:
+
+$$
+r_{ij} = \left( \frac{f_i + f_j}{2} \right) \exp\left\{ -\frac{d_{ij}}{M} \right\}
+$$
+
+## Loss Function
+
+We used individual-level measures of relatedness to estimate $r_{ij}$. Let the number of pairs between demes be given by the vector $\mathbf{P}$, such that:
+
+$$
+\binom{N}{2} = \sum_{i=1}^{K-1} \sum_{j=i+1}^K P_{i,j}
+$$
+
+Let $\mathbf{y_{P_{i,j}}}$ be a vector of IBD values across all sample pairs. The loss function $L(\theta)$, with parameters $\theta = \{f_1, ..., f_K, M\}$, was defined as:
+
+$$
+L(\theta) = \frac{1}{\binom{N}{2}} \sum_{i=1}^{K-1} \sum_{j=i+1}^K \sum_{p=1}^{P_{i,j}} \left(y_{p_{ij}} - r_{ij}\right)^2
+$$
+
+We minimized this function using a gradient descent approach, dropping the $\binom{N}{2}$ constant during implementation. The standard gradient descent approach was extended using the [Adam optimization algorithm](https://arxiv.org/abs/1412.6980) with default hyperparameters. The full mathematical derivation is available [here](https://www.overleaf.com/read/jccqpymhvggr#90de94).
+
+
+
+## Loss Function with Regularization Strategy
+Per the below discussion, we observed instability in the migration parameter $M$ attributed to collinearity with $f_i$, that prompted  the addition of an explicit L2 regularization term:
+
+$$
+L(\theta) = \frac{1}{\binom{N}{2}} \sum_{i=1}^{K-1} \sum_{j=i+1}^K \sum_{p=1}^{P_{i,j}} (y_{p_{ij}} - r_{ij})^2 + \lambda M^2
+$$
+
+
+## Challeneges and Limitations 
+
+Overall, three major challenges that were related - making it difficult to differentiate specific "challenge" class effects. However, the following tries were taken to address each of these issues:
+
+1. **Collinearity (vs. Non-Identifiability)**: Concerns that $M$ and $f_i$ were collinear, leading to unstable estimates - versus - different combinations of $M$ and $f_i$ could produce equivalent fits to observed data (non-identifiable).
+   - **Selected Solution**: L2 Regularization was applied to penalize instability in $M$.
+   - **Rejected Solution**: Independent learning rates for $f_i$ and $M$ 
+
+2. **Cost Varied by Starting Parameters**: observed variability in cost suggested a non-convex loss surface.
+   - **Selected Solution**: Brute-force grid search across initial parameterizations.
+   - **Rejected Solutions (A)**: Simulated Annealing and Particle Swarm Optimization.
+     - Although theoretically promising, these meta-optimization approaches introduced additional hyperparameters (e.g., temperature schedules, inertia weights) that added complexity and injected noise, diminishing overall performance.
+     - Code remains structured in a class-based format to allow future integration of these methods if needed.
+   - **Rejected Solutions (B)**: Numerical approximation of the Hessian matrix (using finite-difference approach).
+     - Relied on strong assumptions (e.g., separability of $f_i$ and $M$ contributions to cost) for computational relief and suspect there aren't clear performance gains.
+
+3. **Lack of a Native Generative Model**: we cannot simulate data directly under the `DISC` model.
+   - `polySimIBD` was used to simulate data, but _may_ introduce noise that can be hard to disentangle from actual DISC estimation behavior. 
+
+
+
+
+## Simulations
+To evaluate the performance of the DISC statistic under varying spatial dynamics, we conducted simulations using the `polySimIBD` simulator. Specifically, we simulated genetic data across demes arranged on a **5x5 grid** with differing migration surface geometries and effective population sizes. **Euclidean distances** were considered between demes.
+
+### Migration-Surface Setup
+
+```{r migration-surfaces, fig.width=24, fig.height=8}
+p1 <- readRDS(paste0(here::here(""), "data/sim_data/sim_params/migmat_framework_ggplot.RDS"))
+p1
+```
+
+
+**Left**: Isotropic and homogeneous with **periodic boundaries**, allowing unrestricted wraparound migration (torus).
+**Center**: Isotropic and homogeneous with **reflecting boundaries**, producing edge effects due to constrained boundary movement (bound).
+**Right**: Anisotropic and homogeneous with **reflecting boundaries**, with **no leftward migration**, introducing directional asymmetry (dexter).
+
+Two additional surface variants were created with spatially heterogeneous effective population sizes (Ne), where deme sizes were scaled using exponential multipliers (\(e^{0}, ..., e^{2}\)) across the grid.
+
+In total, **five migration regimes** were generated for simulation:
+1. Torus  
+2. Bounding Box  
+3. Dexter  
+4. Torus with NeVary  
+5. Bounding Box with NeVary
+
+#### Forward-Time Simulation and IBD Estimation
+
+For each scenario, we performed 10 replicate simulations using the `sim_swf()` function from the `polySimIBD` package. Key simulation parameters included:
+- 1,000 biallelic loci distributed across the 14 chromosomes of *P. falciparum* (based on `rplasmodium::chromsizes_3d7`)
+- A recombination rate of \(7.4 \times 10^{-7}\) M/bp
+- Generation memory \(t = 10\) for recent coalescent tracking
+- Starting deme size \(N = 10\) (scaled by Ne where applicable)
+- A COI regime favoring recent infections (\(\lambda_{\text{COI}} \approx 1.5\))
+
+Pairwise IBD values were computed from the simulated haplotypes using `get_bvibd()` from [Verity et al_ 2020](https://www.nature.com/articles/s41467-020-15779-8). For each deme, **five** individuals were downsampled to generate all pairwise genetic distances. Each resulting dataset was then considered in the DISC inference framework: 10 reps of 5 migration regimes.
+
+
+

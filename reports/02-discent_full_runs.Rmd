@@ -1,0 +1,502 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = T, warning = F, message = F, eval = T, results = 'hide',
+                      fig.align = 'center', fig.width = 8, fig.height = 8)
+knitr::opts_knit$set(root.dir = here::here())
+```
+```{r}
+library(tidyverse)
+remotes::install_github("nickbrazeau/discent")
+library(discent)
+library(cowplot)
+library(viridis)
+library(stringr)
+library(DT)
+set.seed(48)
+```
+
+
+```{r}
+#++++++++++++++++++++++++++++++++++++++++++
+#### Part 0: Import Data and Setup     ####
+#++++++++++++++++++++++++++++++++++++++++++
+# sim data from 01-polySimIBD_data/05-run_sims.R
+simdat <- readRDS("data/sim_data/goDISC_simulated_gendata.RDS") %>%
+  dplyr::mutate(modname = paste(modnameNe, "rep", rep, sep = "-")) %>%
+  dplyr::select(c("modname", "IBDcalc"))
+# location data from 01-polySimIBD_data/02-cartesian_empiric_liftover.R
+locatdat <- readRDS("data/sim_data/sim_params/locatcombo.rds")
+# discent runs full
+discdat <- readRDS("data/sim_data/goDISC_full-DISC_simulated_gendata.RDS") 
+discdat <- discdat %>% 
+  dplyr::mutate(cost = purrr::map_dbl(mod, function(x){tail(x$cost,1)}))
+#............................................................
+# Helper Functions
+#...........................................................
+plot_swf_sim <- function(locatdat, IBDcalc, mod, modname, threshold, alpha = 0.5){
+  #......................
+  # tidy up location data for Sim IBD Plot
+  #......................
+  locatdat1 <- locatdat %>%
+    dplyr::select(dplyr::contains("1")) %>%
+    dplyr::filter(!duplicated(.))
+  locatdat2 <- locatdat %>%
+    dplyr::select(dplyr::contains("2")) %>%
+    dplyr::filter(!duplicated(.))
+  # bring together
+  simplotdat <- IBDcalc %>%
+    dplyr::left_join(., y = locatdat1, by = "deme1") %>%
+    dplyr::left_join(., y = locatdat2, by = "deme2")
+  #......................
+  # plot sim IBD
+  #......................
+  p1 <- simplotdat %>%
+    dplyr::filter(gendist > threshold) %>%
+    ggplot() +
+    geom_point(aes(x = deme1longnum, y = deme1latnum),
+               color = "#d9d9d9", alpha = 0.2) +
+    geom_segment(aes(x = deme1longnum, y = deme1latnum,
+                     xend = deme2longnum, yend = deme2latnum,
+                     color = gendist), alpha = alpha) +
+    viridis::scale_color_viridis("IBD Dist.") +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank())
+
+  #......................
+  # mod data clean up
+  #......................
+  discplotdat <- dplyr::bind_cols(mod$deme_key, mod$Final_Fis)
+  colnames(discplotdat) <- c("deme1", "key", "disc")
+  p2 <- discplotdat %>%
+    dplyr::left_join(.,locatdat1, by = "deme1") %>%
+    ggplot() +
+    geom_point(aes(x = deme1longnum, y = deme1latnum, fill = disc),
+               shape = 21,
+               size = 3) +
+    theme_minimal() +
+    scale_fill_viridis("DISC", option = "mako") +
+    theme(axis.title = element_blank())
+
+  #......................
+  # add title and subtitle
+  #......................
+  # Combine plots side by side
+  plots <- cowplot::plot_grid(p1, p2, labels = NULL)
+
+  # Create title and subtitle as separate ggdraws
+  titlechar <- sim_disc_dat
+  title <- ggdraw() +
+    draw_label(modname,
+               fontface = 'bold', size = 18, x = 0.5, hjust = 0.5)
+
+  subtitle1 <- ggdraw() +
+    draw_label(paste("IBD cutoff for viz: ", threshold),
+               size = 12, x = 0.5, hjust = 0.5)
+  subtitle2 <- ggdraw() +
+    draw_label(paste("Final M calculated:", round(mod$Final_m, digits = 3)),
+               size = 12, x = 0.5, hjust = 0.5)
+  subtitle <- cowplot::plot_grid(subtitle1, subtitle2, labels = NULL)
+
+
+  # Combine title, subtitle, and plots
+  final_plot <- plot_grid(
+    title,
+    plots,
+    subtitle,
+    ncol = 1,
+    rel_heights = c(0.1,1,0.05)
+  )
+
+  # Display
+  final_plot
+}
+
+avg_disc_dat_Func <- function(dat, filt){
+  avgM <- dat %>% 
+    dplyr::filter(overallmodname == filt) %>% 
+    dplyr::summarise( avgM = mean(avgM)) %>% 
+    dplyr::pull(avgM)
+p1 <- dat %>% 
+  dplyr::filter(overallmodname == filt) %>% 
+  ggplot() +
+  geom_point(aes(x = deme1longnum, y = deme1latnum, color = avgF),
+             size = 3) +
+  theme_minimal() +
+  scale_color_viridis() +
+  theme(axis.title = element_blank()) +
+  labs(title = paste("Average Fs and M for Model", filt),
+       caption = paste("Average M: ", round(avgM, digits = 2)))
+
+sdM <- dat %>% 
+  dplyr::filter(overallmodname == filt) %>% 
+  dplyr::summarise( sdM = mean(sdM)) %>% 
+  dplyr::pull(sdM)
+p2 <- dat %>% 
+  dplyr::filter(overallmodname == filt) %>% 
+  ggplot() +
+  geom_point(aes(x = deme1longnum, y = deme1latnum, color = sdF),
+             size = 3) +
+  theme_minimal() +
+  scale_color_viridis() +
+  theme(axis.title = element_blank()) +
+  labs(title = paste("St Dev Fs and M for Model", filt),
+       caption = paste("St Dev M: ", round(sdM, digits = 2)))
+
+cowplot::plot_grid(p1, p2, nrow = 1)
+
+}
+
+
+#++++++++++++++++++++++++++++++++++++++++++
+#### Part 1: Visualize Individual Results     ####
+#++++++++++++++++++++++++++++++++++++++++++
+sim_disc_dat <- dplyr::left_join(simdat, discdat, by = "modname")
+
+sim_disc_dat$viz <- purrr::pmap(sim_disc_dat[,c("IBDcalc", "mod", "modname")], plot_swf_sim,
+                                threshold = 0.1, alpha = 0.5, locatdat = locatdat)
+
+#++++++++++++++++++++++++++++++++++++++++++
+#### Part 2: Visualize Average Results     ####
+#++++++++++++++++++++++++++++++++++++++++++
+avgdiscdat <- discdat %>% 
+  dplyr::mutate( overallmodname = stringr::str_extract(string = modname, pattern = "^(.*?)(?=-rep)") ) %>% 
+  dplyr::select(c("overallmodname", "mod")) %>% 
+  dplyr::mutate(
+    Final_Fis = purrr::map(mod, function(x){x$Final_Fis}),
+    Final_m = purrr::map(mod, function(x){x$Final_m}),
+    deme_key = purrr::map(mod, function(x){x$deme_key}),
+  ) %>% 
+  dplyr::select(-c("mod")) %>% 
+  tidyr::unnest(cols = c(Final_Fis, Final_m, deme_key)) %>% 
+  dplyr::group_by(overallmodname, Deme) %>% 
+  dplyr::summarise(
+    avgF = mean(Final_Fis),
+    avgM = mean(Final_m),
+    sdF = sd(Final_Fis),
+    sdM = sd(Final_m),
+    deme1 = mean(Deme)
+  ) 
+
+avgdiscdatlocat <- locatdat %>% 
+  dplyr::select(c("deme1", "deme1longnum", "deme1latnum")) %>% 
+  dplyr::filter(!duplicated(.)) %>% 
+  dplyr::left_join(avgdiscdat, ., by = "deme1") %>% 
+  dplyr::select(c("overallmodname", "deme1", "deme1longnum", "deme1latnum", "avgF", "avgM", "sdF", "sdM"))
+
+
+```
+
+```{r}
+# tidy up viz data
+torus <- sim_disc_dat %>% 
+  dplyr::filter(stringr::str_detect(modname, "torus-rep-*[0-9]"))
+bound <- sim_disc_dat %>% 
+  dplyr::filter(stringr::str_detect(modname, "bound-rep-*[0-9]"))
+dexter <- sim_disc_dat %>% 
+  dplyr::filter(stringr::str_detect(modname, "dexter-rep-*[0-9]"))
+torusNe <- sim_disc_dat %>% 
+  dplyr::filter(stringr::str_detect(modname, "torus-NeVary-rep-*[0-9]"))
+boundNe <- sim_disc_dat %>% 
+  dplyr::filter(stringr::str_detect(modname, "bound-NeVary-rep-*[0-9]"))
+```
+
+
+## DISC Results: Overview of Search Parameters and Cost
+- For each five migration regime repetition, the best parameter set (lowest cost) was identified from the search grid (eg 50 unique starting models).
+- A second run using this configuration was executed for 100,000 steps to refine estimates.
+
+
+### Isotropic Homogenous with Periodic Boundaries {.tabset}
+
+#### Rep 1
+```{r} 
+torus$viz[[1]]
+``` 
+
+#### Rep 2
+```{r} 
+torus$viz[[2]]
+``` 
+
+#### Rep 3
+```{r} 
+torus$viz[[3]]
+``` 
+
+#### Rep 4
+```{r} 
+torus$viz[[4]]
+``` 
+
+#### Rep 5
+```{r} 
+torus$viz[[5]]
+``` 
+
+#### Rep 6
+```{r} 
+torus$viz[[6]]
+``` 
+
+#### Rep 7
+```{r} 
+torus$viz[[7]]
+``` 
+
+#### Rep 8
+```{r} 
+torus$viz[[8]]
+``` 
+
+#### Rep 9
+```{r} 
+torus$viz[[9]]
+``` 
+
+#### Rep 10
+```{r} 
+torus$viz[[10]]
+``` 
+
+#### Average 
+```{r} 
+avg_disc_dat_Func(dat = avgdiscdatlocat, filt = "torus")
+``` 
+
+### Isotropic Homogenous with Reflecting Boundaries {.tabset}
+
+#### Rep 1
+```{r} 
+bound$viz[[1]]
+``` 
+
+#### Rep 2
+```{r} 
+bound$viz[[2]]
+``` 
+
+#### Rep 3
+```{r} 
+bound$viz[[3]]
+``` 
+
+#### Rep 4
+```{r} 
+bound$viz[[4]]
+``` 
+
+#### Rep 5
+```{r} 
+bound$viz[[5]]
+``` 
+
+#### Rep 6
+```{r} 
+bound$viz[[6]]
+``` 
+
+#### Rep 7
+```{r} 
+bound$viz[[7]]
+``` 
+
+#### Rep 8
+```{r} 
+bound$viz[[8]]
+``` 
+
+#### Rep 9
+```{r} 
+bound$viz[[9]]
+``` 
+
+#### Rep 10
+```{r} 
+bound$viz[[10]]
+``` 
+
+#### Average 
+```{r} 
+avg_disc_dat_Func(dat = avgdiscdatlocat, filt = "bound")
+``` 
+
+### Anisotropic (no left) Homogenous with Reflecting Boundaries {.tabset}
+
+#### Rep 1
+```{r} 
+dexter$viz[[1]]
+``` 
+
+#### Rep 2
+```{r} 
+dexter$viz[[2]]
+``` 
+
+#### Rep 3
+```{r} 
+dexter$viz[[3]]
+``` 
+
+#### Rep 4
+```{r} 
+dexter$viz[[4]]
+``` 
+
+#### Rep 5
+```{r} 
+dexter$viz[[5]]
+``` 
+
+#### Rep 6
+```{r} 
+dexter$viz[[6]]
+``` 
+
+#### Rep 7
+```{r} 
+dexter$viz[[7]]
+``` 
+
+#### Rep 8
+```{r} 
+dexter$viz[[8]]
+``` 
+
+#### Rep 9
+```{r} 
+dexter$viz[[9]]
+``` 
+
+#### Rep 10
+```{r} 
+dexter$viz[[10]]
+``` 
+
+#### Average 
+```{r} 
+avg_disc_dat_Func(dat = avgdiscdatlocat, filt = "dexter")
+``` 
+
+### Isotropic Homogenous with Periodic Boundaries and Varying Ne {.tabset}
+
+#### Rep 1
+```{r} 
+torusNe$viz[[1]]
+``` 
+
+#### Rep 2
+```{r} 
+torusNe$viz[[2]]
+``` 
+
+#### Rep 3
+```{r} 
+torusNe$viz[[3]]
+``` 
+
+#### Rep 4
+```{r} 
+torusNe$viz[[4]]
+``` 
+
+#### Rep 5
+```{r} 
+torusNe$viz[[5]]
+``` 
+
+#### Rep 6
+```{r} 
+torusNe$viz[[6]]
+``` 
+
+#### Rep 7
+```{r} 
+torusNe$viz[[7]]
+``` 
+
+#### Rep 8
+```{r} 
+torusNe$viz[[8]]
+``` 
+
+#### Rep 9
+```{r} 
+torusNe$viz[[9]]
+``` 
+
+#### Rep 10
+```{r} 
+torusNe$viz[[10]]
+``` 
+
+#### Average 
+```{r} 
+avg_disc_dat_Func(dat = avgdiscdatlocat, filt = "torus-NeVary")
+``` 
+
+### Isotropic Homogenous with Reflecting Boundaries and Varying Ne {.tabset}
+
+#### Rep 1
+```{r} 
+boundNe$viz[[1]]
+``` 
+
+#### Rep 2
+```{r} 
+boundNe$viz[[2]]
+``` 
+
+#### Rep 3
+```{r} 
+boundNe$viz[[3]]
+``` 
+
+#### Rep 4
+```{r} 
+boundNe$viz[[4]]
+``` 
+
+#### Rep 5
+```{r} 
+boundNe$viz[[5]]
+``` 
+
+#### Rep 6
+```{r} 
+boundNe$viz[[6]]
+``` 
+
+#### Rep 7
+```{r} 
+boundNe$viz[[7]]
+``` 
+
+#### Rep 8
+```{r} 
+boundNe$viz[[8]]
+``` 
+
+#### Rep 9
+```{r} 
+boundNe$viz[[9]]
+``` 
+
+#### Rep 10
+```{r} 
+boundNe$viz[[10]]
+``` 
+
+#### Average 
+```{r} 
+avg_disc_dat_Func(dat = avgdiscdatlocat, filt = "bound-NeVary")
+``` 

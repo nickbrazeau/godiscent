@@ -22,6 +22,8 @@ simdat <- readRDS("data/sim_data/goDISC_simulated_gendata.RDS") %>%
   dplyr::select(c("modname", "IBDcalc"))
 # location data from 01-polySimIBD_data/02-cartesian_empiric_liftover.R
 locatdat <- readRDS("data/sim_data/sim_params/locatcombo.rds")
+# discent runs search-grid
+search_discdat <- readRDS("data/sim_data/goDISC_search-DISC_simulated_gendata.RDS")
 # discent runs full
 discdat <- readRDS("data/sim_data/goDISC_full-DISC_simulated_gendata.RDS")
 # bring together
@@ -87,7 +89,7 @@ plot_swf_sim <- function(locatdat, IBDcalc, mod, modname, threshold, alpha = 0.5
                shape = 21,
                size = 3) +
     theme_minimal() +
-    scale_fill_viridis("DISC", option = "mako") +
+    scale_fill_viridis("DISC") +
     theme(axis.title = element_blank())
 
   #......................
@@ -126,21 +128,36 @@ plot_swf_sim <- function(locatdat, IBDcalc, mod, modname, threshold, alpha = 0.5
 
 
 
-#++++++++++++++++++++++++++++++++++++++++++
-### Part 1: Visualize Results     ####
-#++++++++++++++++++++++++++++++++++++++++++
-sim_disc_dat$viz <- purrr::pmap(sim_disc_dat[,c("IBDcalc", "mod", "modname")], plot_swf_sim,
-                                threshold = 0.1, alpha = 0.5, locatdat = locatdat)
-
-
-# # save out
-# sim_disc_dat %>%
-#   dplyr::select(c("modname", "viz")) %>%
-#   saveRDS(., file = "data/sim_data/goDISC_visualization-full-DISC_simulated_gendata.RDS")
 
 #++++++++++++++++++++++++++++++++++++++++++
-### Part 2: Summary Statistics of DISC Results     ####
+### Part 1: Summary Statistics of DISC Search     ####
 #++++++++++++++++++++++++++++++++++++++++++
+summary(search_discdat$cost)
+hist(search_discdat$cost)
+
+search_discdat %>%
+  dplyr::mutate(
+    overallmodname = stringr::str_extract(string = modname, pattern = "^(.*?)(?=-rep)")) %>%
+  dplyr::group_by(overallmodname) %>%
+  dplyr::summarise(
+    mincost = min(cost),
+    firstqcost = quantile(cost, prob = 0.25),
+    mediancost = quantile(cost, prob = 0.5),
+    meancost = mean(cost),
+    firstqcost = quantile(cost, prob = 0.75),
+    sdcost = sd(cost),
+    maxcost = max(cost) ) %>%
+  DT::datatable(.,
+              rownames = F,
+              extensions='Buttons',
+              options = list(
+                searching = T,
+                pageLength = 10,
+                dom = 'Bfrtip',
+                autoWidth = TRUE,
+                buttons = c('csv')))
+
+
 finalMs <- unlist(purrr::map(sim_disc_dat$mod, "Final_m"))
 finalFs <- unlist(purrr::map(sim_disc_dat$mod, "Final_Fis"))
 
@@ -155,3 +172,17 @@ torusfinalFs <- unlist(purrr::map(torus$mod, "Final_Fis"))
 dexterfinalFs <- unlist(purrr::map(dexter$mod, "Final_Fis"))
 summary(torusfinalFs)
 summary(dexterfinalFs)
+
+
+
+#++++++++++++++++++++++++++++++++++++++++++
+### Part 3: Visualize Results     ####
+#++++++++++++++++++++++++++++++++++++++++++
+sim_disc_dat$viz <- purrr::pmap(sim_disc_dat[,c("IBDcalc", "mod", "modname")], plot_swf_sim,
+                                threshold = 0.1, alpha = 0.5, locatdat = locatdat)
+
+
+# # save out
+# sim_disc_dat %>%
+#   dplyr::select(c("modname", "viz")) %>%
+#   saveRDS(., file = "data/sim_data/goDISC_visualization-full-DISC_simulated_gendata.RDS")
